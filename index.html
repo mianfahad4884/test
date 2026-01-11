@@ -1,479 +1,412 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="midnight">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SENTINEL | OS v88.0 [CLASSIFIED]</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL | C4ISR COMMAND</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=JetBrains+Mono:wght@100;400;700;800&family=Rajdhani:wght@300;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        /* --- CORE VARIABLES --- */
         :root {
-            --bg-base: #030508;
-            --bg-panel: rgba(10, 15, 25, 0.85);
-            --bg-input: rgba(0, 0, 0, 0.6);
-            --border: rgba(255, 255, 255, 0.1);
-            --accent: #00f0ff; /* Cyan Cyber */
-            --accent-glow: rgba(0, 240, 255, 0.4);
-            --text-main: #e0f7ff;
-            --text-mut: #5e7a8a;
-            --scanline: rgba(0, 0, 0, 0.5);
-            --crt-flicker: rgba(0, 240, 255, 0.02);
+            --c-bg: #050a10;
+            --c-panel: rgba(10, 20, 30, 0.95);
+            --c-prim: #00f0ff; /* Cyan */
+            --c-sec: #ff003c;  /* Red */
+            --c-warn: #fcee0a; /* Amber */
+            --c-dim: rgba(0, 240, 255, 0.15);
+            --scan-color: rgba(0, 240, 255, 0.1);
         }
-
-        /* --- THEME OVERRIDES --- */
-        [data-theme="amber"] { --accent: #ffae00; --accent-glow: rgba(255, 174, 0, 0.4); }
-        [data-theme="crimson"] { --accent: #ff003c; --accent-glow: rgba(255, 0, 60, 0.4); }
-        [data-theme="emerald"] { --accent: #00ff9d; --accent-glow: rgba(0, 255, 157, 0.4); }
 
         body {
-            background-color: var(--bg-base);
-            color: var(--text-main);
-            font-family: 'Rajdhani', sans-serif;
+            background-color: var(--c-bg);
+            color: var(--c-prim);
+            font-family: 'Share Tech Mono', monospace;
             height: 100vh;
             overflow: hidden;
+            margin: 0;
+            user-select: none;
+            cursor: crosshair;
+        }
+
+        /* --- CRT & SCREEN FX --- */
+        #crt-overlay {
+            position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            animation: flicker 0.15s infinite;
+        }
+        
+        .scanline {
+            width: 100%; height: 100px; z-index: 9998;
+            background: linear-gradient(0deg, rgba(0,0,0,0) 0%, var(--scan-color) 50%, rgba(0,0,0,0) 100%);
+            opacity: 0.1;
+            position: fixed; bottom: 100%;
+            animation: scanline 10s linear infinite;
+            pointer-events: none;
+        }
+
+        /* --- UI COMPONENTS --- */
+        .tech-border {
+            border: 1px solid var(--c-dim);
             position: relative;
+            background: var(--c-panel);
+            backdrop-filter: blur(4px);
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
         }
-
-        /* --- BACKGROUND FX --- */
-        #canvas-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.6; }
+        /* Corner brackets */
+        .tech-border::before, .tech-border::after {
+            content: ''; position: absolute; width: 8px; height: 8px;
+            border: 2px solid var(--c-prim); transition: all 0.3s;
+        }
+        .tech-border::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+        .tech-border::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
         
-        .scanlines {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 999;
-            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, var(--scanline) 50%, var(--scanline));
-            background-size: 100% 4px;
-            animation: scrollLines 10s linear infinite;
-            opacity: 0.15;
+        .tech-btn {
+            background: rgba(0, 240, 255, 0.05);
+            border: 1px solid var(--c-dim);
+            color: var(--c-prim);
+            text-transform: uppercase;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 2px;
+            transition: all 0.2s;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+        .tech-btn:hover {
+            background: var(--c-prim); color: #000;
+            box-shadow: 0 0 20px var(--c-prim);
+            text-shadow: none;
         }
 
-        .vignette {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 998;
-            background: radial-gradient(circle, transparent 50%, black 140%);
-        }
-
-        /* --- TYPOGRAPHY & SHAPES --- */
-        .font-tech { font-family: 'Chakra Petch', sans-serif; }
-        .font-code { font-family: 'JetBrains Mono', monospace; }
+        .blink { animation: blink 1s infinite; }
         
-        .chamfer {
-            clip-path: polygon(
-                12px 0, 100% 0, 
-                100% calc(100% - 12px), 
-                calc(100% - 12px) 100%, 
-                0 100%, 0 12px
-            );
-            border: 1px solid var(--border);
-        }
-
-        .glass-panel {
-            background: var(--bg-panel);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--border);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-        }
-
         /* --- ANIMATIONS --- */
-        @keyframes scrollLines { 0% { background-position: 0 0; } 100% { background-position: 0 100px; } }
-        @keyframes textDecode { 0% { opacity: 0; } 100% { opacity: 1; } }
+        @keyframes scanline { 0% { bottom: 100%; } 100% { bottom: -100%; } }
+        @keyframes flicker { 0% { opacity: 0.97; } 100% { opacity: 1; } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
         
-        .glitch-hover:hover {
-            animation: glitch-anim 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
-            color: var(--accent);
-            border-color: var(--accent);
-            box-shadow: 0 0 15px var(--accent-glow);
+        /* --- LAYOUT GRID --- */
+        #main-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr 300px;
+            grid-template-rows: 60px 1fr 200px;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+            opacity: 0; /* Hidden until boot */
         }
 
-        @keyframes glitch-anim {
-            0% { transform: translate(0) }
-            20% { transform: translate(-2px, 2px) }
-            40% { transform: translate(-2px, -2px) }
-            60% { transform: translate(2px, 2px) }
-            80% { transform: translate(2px, -2px) }
-            100% { transform: translate(0) }
-        }
+        /* --- TACTICAL MAP --- */
+        #tactical-map { width: 100%; height: 100%; background: radial-gradient(circle at center, #0a1520 0%, #000 100%); }
+        
+        /* --- SCROLLBARS --- */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: var(--c-dim); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--c-prim); }
 
-        /* --- UTILS --- */
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
-        
-        .hud-line { height: 1px; width: 100%; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.5; margin: 1rem 0; }
-        
-        .pin-btn.active { color: var(--accent); text-shadow: 0 0 10px var(--accent); }
+        /* --- BIOS SCREEN --- */
+        #bios-screen {
+            position: fixed; inset: 0; background: #000; z-index: 10000;
+            padding: 40px; font-family: 'Share Tech Mono', monospace;
+            color: var(--c-prim); font-size: 14px; line-height: 1.5;
+        }
     </style>
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        base: 'var(--bg-base)',
-                        panel: 'var(--bg-panel)',
-                        input: 'var(--bg-input)',
-                        txtMain: 'var(--text-main)',
-                        txtMut: 'var(--text-mut)',
-                        accent: 'var(--accent)',
-                        glow: 'var(--accent-glow)',
-                    }
-                }
-            }
-        }
-    </script>
 </head>
-<body class="text-sm">
+<body>
 
-    <canvas id="canvas-bg"></canvas>
-    <div class="scanlines"></div>
-    <div class="vignette"></div>
+    <div id="crt-overlay"></div>
+    <div class="scanline"></div>
 
-    <div id="bootModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-black text-center cursor-pointer" onclick="app.boot()">
-        <div class="font-code text-accent text-xs space-y-2">
-            <div class="animate-pulse mb-4 text-4xl">⚠</div>
-            <p>INITIALIZING SENTINEL OS...</p>
-            <p class="text-txtMut">LOADING MODULES: [CRYPT] [NET] [TAC-DB]</p>
-            <p class="mt-8 border border-accent px-6 py-2 hover:bg-accent hover:text-black transition-colors inline-block uppercase tracking-widest font-bold">Touch to Initialize</p>
-        </div>
+    <div id="bios-screen">
+        <div id="bios-text"></div>
+        <button id="init-btn" class="hidden mt-8 border border-cyan-500 px-8 py-2 hover:bg-cyan-500 hover:text-black font-bold animate-pulse" onclick="sys.init()">>> INITIALIZE SYSTEM CONTROLLER <<</button>
     </div>
 
-    <div id="compareDock" class="fixed bottom-0 left-0 w-full z-50 transform translate-y-full transition-transform duration-300 backdrop-blur-xl bg-black/90 border-t border-accent">
-        <div class="max-w-7xl mx-auto p-4 flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="text-accent font-tech font-bold tracking-widest text-xs border-r border-gray-700 pr-4">COMPARE<br>MATRIX</div>
-                <div id="compareSlots" class="flex gap-2">
-                    </div>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="app.runComparison()" class="bg-accent text-black font-bold px-6 py-2 chamfer hover:brightness-110 font-tech uppercase">Analyze</button>
-                <button onclick="app.clearCompare()" class="border border-red-500 text-red-500 px-3 chamfer hover:bg-red-500 hover:text-black">X</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="mainInterface" class="flex flex-col h-full opacity-0 transition-opacity duration-1000">
+    <div id="main-grid">
         
-        <header class="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-panel/50 backdrop-blur-md z-40">
-            <div class="flex items-center gap-4 cursor-pointer group" onclick="app.view('home')">
-                <div class="w-10 h-10 border border-accent flex items-center justify-center chamfer group-hover:bg-accent/10 transition-colors">
-                    <span class="text-accent font-tech text-xl">⌬</span>
-                </div>
+        <header class="col-span-3 tech-border flex items-center justify-between px-6 bg-black/60">
+            <div class="flex items-center gap-4">
+                <div class="w-8 h-8 bg-cyan-500 text-black flex items-center justify-center font-bold text-xl">S</div>
                 <div>
-                    <h1 class="font-tech font-bold text-xl tracking-widest leading-none text-white">SENTINEL <span class="text-accent">OS</span></h1>
-                    <div class="text-[10px] font-code text-accent opacity-70 tracking-[0.4em]">v88.0.1 TACTICAL</div>
+                    <h1 class="font-['Orbitron'] text-2xl tracking-[0.2em] font-bold text-white shadow-cyan-500/50 drop-shadow-lg">SENTINEL<span class="text-cyan-400">.NET</span></h1>
+                    <div class="text-[10px] text-cyan-700 tracking-[0.4em]">DEFENSE NETWORK CONTROLLER v99.0</div>
+                </div>
+            </div>
+            
+            <div class="flex-1 mx-12 overflow-hidden relative h-6 border-x border-cyan-900/50">
+                <div class="absolute whitespace-nowrap animate-[marquee_15s_linear_infinite] text-xs text-amber-500 pt-1">
+                    ⚠ ALERT: UNIDENTIFIED BOGEY DETECTED IN SECTOR 7 // COMMENCING DATALINK HANDSHAKE // SATCOM ONLINE // ENCRYPTION KEY: ROTATING
                 </div>
             </div>
 
-            <div class="flex-1 max-w-2xl mx-8 relative hidden md:block group">
-                <input type="text" id="globalSearch" placeholder="SEARCH DATABASE // ENTER KEYWORD..." 
-                    class="w-full bg-input border border-white/20 text-accent font-code text-xs py-2 px-4 focus:outline-none focus:border-accent focus:shadow-[0_0_15px_rgba(0,240,255,0.2)] chamfer transition-all"
-                    oninput="app.search(this.value)">
-                <div class="absolute right-2 top-2 text-white/20 font-bold text-xs pointer-events-none group-focus-within:text-accent">🔍</div>
-            </div>
-
-            <div class="flex gap-4">
-                <button onclick="app.toggleTheme()" class="text-txtMut hover:text-accent font-code text-xs">[THEME]</button>
-                <div id="clock" class="font-code text-accent text-xs border border-accent/30 px-3 py-1 chamfer">00:00:00</div>
+            <div class="flex gap-6 text-xs font-bold">
+                <div class="text-red-500 blink">DEFCON 3</div>
+                <div class="text-cyan-500">NET: SECURE</div>
+                <div id="sys-clock">00:00:00</div>
             </div>
         </header>
 
-        <div class="flex flex-1 overflow-hidden relative">
+        <nav class="tech-border row-span-2 flex flex-col p-2 bg-black/40">
+            <div class="text-[10px] text-gray-500 mb-2 border-b border-gray-800 pb-1">MODULE SELECTION</div>
+            <div class="space-y-2 flex-1 overflow-y-auto">
+                <div id="nav-container"></div>
+            </div>
             
-            <aside class="w-64 border-r border-white/10 hidden md:flex flex-col bg-panel/30 backdrop-blur-sm">
-                <div class="p-4">
-                    <div class="text-[10px] font-bold text-txtMut tracking-widest mb-4 border-b border-white/10 pb-2">DATA STREAMS</div>
-                    <nav class="space-y-1">
-                        <button onclick="app.view('nuclear')" class="w-full text-left px-4 py-3 text-xs font-bold text-gray-400 hover:text-amber-500 hover:bg-white/5 border-l-2 border-transparent hover:border-amber-500 transition-all font-tech tracking-wider">STRATEGIC COMMAND ☢</button>
-                        <button onclick="app.view('army')" class="w-full text-left px-4 py-3 text-xs font-bold text-gray-400 hover:text-emerald-500 hover:bg-white/5 border-l-2 border-transparent hover:border-emerald-500 transition-all font-tech tracking-wider">LAND FORCES 🛡</button>
-                        <button onclick="app.view('airforce')" class="w-full text-left px-4 py-3 text-xs font-bold text-gray-400 hover:text-sky-500 hover:bg-white/5 border-l-2 border-transparent hover:border-sky-500 transition-all font-tech tracking-wider">AIR FORCE ✈</button>
-                        <button onclick="app.view('navy')" class="w-full text-left px-4 py-3 text-xs font-bold text-gray-400 hover:text-blue-500 hover:bg-white/5 border-l-2 border-transparent hover:border-blue-500 transition-all font-tech tracking-wider">NAVAL FORCES ⚓</button>
-                        <button onclick="app.view('industry')" class="w-full text-left px-4 py-3 text-xs font-bold text-gray-400 hover:text-purple-500 hover:bg-white/5 border-l-2 border-transparent hover:border-purple-500 transition-all font-tech tracking-wider">MIL-IND COMPLEX 🏭</button>
-                        <button onclick="app.view('future')" class="w-full text-left px-4 py-3 text-xs font-bold text-gray-400 hover:text-pink-500 hover:bg-white/5 border-l-2 border-transparent hover:border-pink-500 transition-all font-tech tracking-wider">PROJECT AZM / R&D 🔬</button>
-                    </nav>
+            <div class="mt-4 border-t border-cyan-900 pt-4 p-2">
+                <div class="text-xs mb-1">CPU LOAD</div>
+                <div class="w-full h-2 bg-gray-900 mb-2"><div class="h-full bg-cyan-500 w-[45%] animate-pulse"></div></div>
+                <div class="text-xs mb-1">MEM USAGE</div>
+                <div class="w-full h-2 bg-gray-900"><div class="h-full bg-amber-500 w-[72%]"></div></div>
+            </div>
+        </nav>
+
+        <main class="tech-border relative overflow-hidden group">
+            <canvas id="tactical-map" class="absolute inset-0"></canvas>
+            
+            <div id="data-overlay" class="absolute inset-0 bg-black/80 backdrop-blur-sm p-6 hidden overflow-y-auto transition-opacity duration-300">
+                <div class="flex justify-between items-end border-b border-cyan-500/30 pb-4 mb-6">
+                    <h2 id="view-title" class="text-4xl font-['Orbitron'] text-white"></h2>
+                    <button onclick="ui.closeView()" class="text-red-500 border border-red-500 px-3 hover:bg-red-500 hover:text-black">CLOSE STREAM [X]</button>
                 </div>
-                <div class="mt-auto p-4 border-t border-white/10">
-                    <div class="bg-black/40 p-2 chamfer border border-white/5">
-                        <div class="flex justify-between text-[10px] text-txtMut font-code">
-                            <span>SYS.LOAD</span>
-                            <span class="text-accent">4%</span>
-                        </div>
-                        <div class="w-full h-1 bg-gray-800 mt-1"><div class="h-full bg-accent w-[4%]"></div></div>
+                <div id="view-content" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    </div>
+            </div>
+
+            <div id="reticle" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border border-cyan-500/20 rounded-full pointer-events-none flex items-center justify-center">
+                <div class="w-1 h-4 bg-cyan-500 absolute top-0"></div>
+                <div class="w-1 h-4 bg-cyan-500 absolute bottom-0"></div>
+                <div class="w-4 h-1 bg-cyan-500 absolute left-0"></div>
+                <div class="w-4 h-1 bg-cyan-500 absolute right-0"></div>
+                <div class="text-[10px] text-cyan-500/50 mt-32">LOCKING...</div>
+            </div>
+        </main>
+
+        <aside class="tech-border row-span-2 flex flex-col bg-black/40">
+            <div class="h-1/2 border-b border-cyan-900 p-4 flex flex-col">
+                <div class="text-[10px] text-amber-500 mb-2">TARGET ANALYSIS</div>
+                <div id="target-detail" class="flex-1 flex flex-col justify-center items-center text-center opacity-50">
+                    <div class="text-4xl text-gray-800 mb-2">∅</div>
+                    <div class="text-xs text-gray-600">NO TARGET SELECTED</div>
+                    <div class="text-[9px] text-gray-700 mt-1">SELECT ASSET FROM DATABASE</div>
+                </div>
+                <div id="active-target" class="hidden h-full flex flex-col">
+                    <h3 id="t-name" class="text-xl font-bold text-white font-['Orbitron']"></h3>
+                    <div id="t-role" class="text-xs text-cyan-400 mb-4"></div>
+                    <div id="t-specs" class="space-y-2 text-xs flex-1 overflow-y-auto"></div>
+                    <div class="h-32 mt-2 w-full relative">
+                        <canvas id="radar-chart"></canvas>
                     </div>
                 </div>
-            </aside>
+            </div>
 
-            <main id="viewport" class="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar scroll-smooth relative">
-                </main>
+            <div class="h-1/2 p-2 font-mono text-[10px] overflow-hidden flex flex-col bg-black">
+                <div class="text-gray-500 border-b border-gray-800 mb-1">SYSTEM_LOG ></div>
+                <div id="console-output" class="flex-1 overflow-y-auto text-green-500 p-1 space-y-1">
+                    </div>
+            </div>
+        </aside>
 
-        </div>
+        <footer class="col-span-3 tech-border flex items-center px-4 gap-4 bg-black/80">
+            <div class="text-xs text-gray-500">MODE:</div>
+            <button class="px-4 py-1 bg-cyan-900/30 text-cyan-400 text-xs hover:bg-cyan-500 hover:text-black transition-colors" onclick="ui.setMode('INTERCEPT')">INTERCEPT</button>
+            <button class="px-4 py-1 bg-cyan-900/30 text-cyan-400 text-xs hover:bg-cyan-500 hover:text-black transition-colors" onclick="ui.setMode('SURVEILLANCE')">SURVEILLANCE</button>
+            <div class="flex-1"></div>
+            <div class="w-64">
+                <div class="flex justify-between text-[9px] mb-1"><span>SIGNAL STRENGTH</span><span>98%</span></div>
+                <div class="w-full h-1 bg-gray-900 overflow-hidden">
+                    <div class="h-full bg-cyan-500 animate-[loading_2s_ease-in-out_infinite] w-full origin-left"></div>
+                </div>
+            </div>
+        </footer>
+
     </div>
 
     <script>
-        // --- 1. THE DATA CORE (Preserved & Compressed) ---
+        // --- DATA CORE ---
         const DB = {
-            nuclear: { name: "Strategic Command", color: "text-amber-500", hex: "#f59e0b", cats: { 
-                ballistic: { name: "Ballistic Missiles", items: [
-                    { id: "shaheen3", name: "Shaheen-III", role: "MRBM", specs: { "Range": "2,750 km", "Speed": "Mach 18", "Tech": "High", "Payload": "Nuclear" } },
-                    { id: "ababeel", name: "Ababeel", role: "MIRV MRBM", specs: { "Range": "2,200 km", "Speed": "Mach 15", "Tech": "Very High", "Payload": "MIRV" } },
-                    { id: "ghauri", name: "Ghauri", role: "MRBM", specs: { "Range": "1,300 km", "Speed": "Mach 10", "Tech": "Med", "Payload": "Nuclear" } },
-                    { id: "nasr", name: "Nasr", role: "TNW", specs: { "Range": "70 km", "Speed": "Mach 4", "Tech": "High", "Payload": "Tactical Nuc" } }
-                ]},
-                cruise: { name: "Strategic Cruise", items: [
-                    { id: "babur3", name: "Babur-III", role: "SLCM", specs: { "Range": "450 km", "Speed": "Mach 0.8", "Tech": "Very High", "Payload": "Nuclear" } },
-                    { id: "raad2", name: "Ra'ad-II", role: "ALCM", specs: { "Range": "600 km", "Speed": "Mach 0.8", "Tech": "High", "Payload": "Nuclear" } }
-                ]}
-            }},
-            army: { name: "Pakistan Army", color: "text-emerald-500", hex: "#10b981", cats: {
-                armor: { name: "Armored Corps", items: [
-                    { id: "vt4", name: "VT-4 Haider", role: "MBT", specs: { "Range": "500 km", "Speed": "70 km/h", "Tech": "High", "Firepower": "125mm" } },
-                    { id: "alkhalid1", name: "Al-Khalid I", role: "MBT", specs: { "Range": "450 km", "Speed": "72 km/h", "Tech": "Med-High", "Firepower": "125mm" } }
-                ]},
-                artillery: { name: "Artillery & MLRS", items: [
-                    { id: "fatah1", name: "Fatah-1", role: "GMLRS", specs: { "Range": "140 km", "Speed": "Mach 3", "Tech": "High", "Accuracy": "Precise" } },
-                    { id: "sh15", name: "SH-15", role: "SP Howitzer", specs: { "Range": "53 km", "Speed": "90 km/h", "Tech": "High", "Firepower": "155mm" } }
-                ]},
-                drones: { name: "Loitering Munitions", items: [
-                    { id: "blaze75", name: "Blaze-75", role: "Loitering", specs: { "Range": "500 km", "Endurance": "High", "Tech": "Med", "Payload": "30 kg" } }
-                ]}
-            }},
-            airforce: { name: "Air Force", color: "text-sky-500", hex: "#0ea5e9", cats: {
-                fighters: { name: "Combat Aircraft", items: [
-                    { id: "j10c", name: "J-10C Dragon", role: "Omni-Role", specs: { "Range": "1850 km", "Speed": "Mach 1.8", "Tech": "Very High", "Radar": "AESA" } },
-                    { id: "jf173", name: "JF-17 Block III", role: "Multi-Role", specs: { "Range": "1350 km", "Speed": "Mach 1.6", "Tech": "High", "Radar": "AESA" } },
-                    { id: "f16c", name: "F-16C/D Blk 52", role: "Multi-Role", specs: { "Range": "3200 km", "Speed": "Mach 2.0", "Tech": "High", "Radar": "APG-68" } }
-                ]},
-                special: { name: "Special Mission", items: [
-                    { id: "shahpar3", name: "Shahpar-III", role: "MALE UCAV", specs: { "Range": "3000 km", "Speed": "Unknown", "Tech": "High", "Hardpoints": "6" } },
-                    { id: "zdk03", name: "ZDK-03", role: "AEW&C", specs: { "Range": "450 km Detect", "Speed": "Mach 0.6", "Tech": "High", "Type": "AESA" } }
-                ]}
-            }},
-            navy: { name: "Pakistan Navy", color: "text-blue-500", hex: "#3b82f6", cats: {
-                surface: { name: "Surface Fleet", items: [
-                    { id: "054ap", name: "Tughril Class", role: "Frigate", specs: { "Range": "8000 nm", "Speed": "27 kn", "Tech": "High", "Displacement": "4200t" } },
-                    { id: "babur", name: "Babur Class", role: "Corvette", specs: { "Range": "5000 nm", "Speed": "29 kn", "Tech": "High", "Displacement": "3000t" } }
-                ]},
-                subs: { name: "Submarines", items: [
-                    { id: "hangor", name: "Hangor Class", role: "AIP SSK", specs: { "Range": "Unknown", "Speed": "20 kn", "Tech": "Very High", "Type": "AIP" } }
-                ]}
-            }},
-            industry: { name: "Industry", color: "text-purple-500", hex: "#a855f7", cats: {
-                giants: { name: "Complexes", items: [
-                    { id: "adic", name: "ADIC", role: "Design Centre", specs: { "Focus": "5th Gen", "Loc": "Kamra", "Tech": "Advanced" } },
-                    { id: "pac", name: "PAC Kamra", role: "Aerospace", specs: { "Focus": "Production", "Product": "JF-17", "Tech": "High" } }
-                ]}
-            }},
-            future: { name: "Black Projects", color: "text-pink-500", hex: "#ec4899", cats: {
-                projects: { name: "R&D", items: [
-                    { id: "pfx", name: "PF-X (Azm)", role: "5th Gen Fighter", specs: { "Range": "Classified", "Speed": "Mach 2.0+", "Tech": "Stealth", "Status": "Design" } },
-                    { id: "p282", name: "P-282", role: "Hypersonic", specs: { "Range": "Unknown", "Speed": "Mach 5+", "Tech": "Hypersonic", "Status": "R&D" } }
-                ]}
-            }}
+            strategic: { label: "STRATEGIC", color: "text-amber-500", hex: "#f59e0b", items: [
+                { id: "shaheen3", name: "SHAHEEN-III", type: "MRBM", specs: { range: "2750 KM", warhead: "NUCLEAR/HE", speed: "MACH 18" } },
+                { id: "ababeel", name: "ABABEEL", type: "MIRV", specs: { range: "2200 KM", warhead: "MIRV x3", speed: "MACH 15" } },
+                { id: "babur3", name: "BABUR-III", type: "SLCM", specs: { range: "450 KM", warhead: "NUCLEAR", launch: "SUBMARINE" } }
+            ]},
+            air: { label: "AIR FORCE", color: "text-cyan-400", hex: "#22d3ee", items: [
+                { id: "j10c", name: "J-10C DRAGON", type: "FIGHTER", specs: { speed: "MACH 1.8", radar: "AESA KLJ-7A", armament: "PL-15" } },
+                { id: "jf173", name: "JF-17 BLK III", type: "MULTIROLE", specs: { speed: "MACH 1.6", radar: "KLJ-7A", cost: "LOW" } },
+                { id: "shahpar", name: "SHAHPAR-III", type: "MALE UAV", specs: { endurance: "20 HRS", hardpoints: "6", role: "STRIKE" } }
+            ]},
+            land: { label: "ARMY SYSTEMS", color: "text-green-500", hex: "#22c55e", items: [
+                { id: "vt4", name: "VT-4 HAIDER", type: "MBT", specs: { armor: "COMPOSITE", gun: "125MM", speed: "70 KM/H" } },
+                { id: "fatah", name: "FATAH-1", type: "MLRS", specs: { range: "140 KM", guidance: "GPS/INS", payload: "HE" } }
+            ]},
+            sea: { label: "NAVAL", color: "text-blue-500", hex: "#3b82f6", items: [
+                { id: "hangor", name: "HANGOR CLASS", type: "SUBMARINE", specs: { propulsion: "AIP", armament: "BABUR-3", depth: "300M+" } },
+                { id: "tughril", name: "TUGHRIL CLASS", type: "FRIGATE", specs: { missiles: "CM-302", radar: "SR2410C", role: "AAW/ASW" } }
+            ]}
         };
 
-        // --- 2. THE ENGINE ---
-        const app = {
-            viewport: document.getElementById('viewport'),
-            compareList: new Set(),
-            currentTheme: 0,
-            themes: ['midnight', 'amber', 'emerald', 'crimson'],
+        // --- AUDIO ENGINE (Synthesizer) ---
+        const audio = {
+            ctx: null,
+            init: function() {
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+            },
+            playTone: function(freq, type, duration) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            },
+            click: function() { this.playTone(1200, 'square', 0.05); },
+            hover: function() { this.playTone(400, 'sine', 0.1); },
+            alert: function() { this.playTone(150, 'sawtooth', 0.3); }
+        };
 
-            boot: function() {
-                document.getElementById('bootModal').style.display = 'none';
-                document.getElementById('mainInterface').style.opacity = '1';
-                this.bgAnim();
-                this.renderHome();
+        // --- SYSTEM CONTROLLER ---
+        const sys = {
+            init: function() {
+                audio.init();
+                audio.alert(); // Boot sound
+                document.getElementById('bios-screen').style.display = 'none';
+                document.getElementById('main-grid').style.opacity = '1';
+                
+                // Initialize modules
+                map.init();
+                ui.buildNav();
+                ui.log("SYSTEM INITIALIZED", "SUCCESS");
+                ui.log("CONNECTED TO SATELLITE UPLINK...", "INFO");
+                
                 setInterval(() => {
-                    document.getElementById('clock').innerText = new Date().toLocaleTimeString('en-GB', { hour12: false });
+                    document.getElementById('sys-clock').innerText = new Date().toLocaleTimeString('en-US', {hour12: false});
                 }, 1000);
             },
-
-            bgAnim: function() {
-                const canvas = document.getElementById('canvas-bg');
-                const ctx = canvas.getContext('2d');
-                let width, height;
+            
+            bootSequence: async function() {
+                const term = document.getElementById('bios-text');
+                const lines = [
+                    "SENTINEL OS KERNEL v99.0 loading...",
+                    "Checking Memory........ OK",
+                    "Mounting Volumes....... OK",
+                    "Loading Drivers: [VID] [NET] [CRYPTO]",
+                    "Establishing Secure Handshake...",
+                    "Decrypting User Keys...",
+                    "ACCESS GRANTED."
+                ];
                 
-                const resize = () => {
-                    width = canvas.width = window.innerWidth;
-                    height = canvas.height = window.innerHeight;
-                };
-                window.addEventListener('resize', resize);
-                resize();
+                for(let line of lines) {
+                    term.innerHTML += `<div>> ${line}</div>`;
+                    await new Promise(r => setTimeout(r, Math.random() * 400 + 100));
+                }
+                document.getElementById('init-btn').classList.remove('hidden');
+            }
+        };
 
-                const particles = [];
-                for(let i=0; i<60; i++) particles.push({
-                    x: Math.random() * width, y: Math.random() * height,
-                    vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5,
-                    s: Math.random() * 2
+        // --- UI MANAGER ---
+        const ui = {
+            log: function(msg, type="INFO") {
+                const con = document.getElementById('console-output');
+                const time = new Date().toLocaleTimeString('en-GB');
+                const color = type === "SUCCESS" ? "text-green-400" : type === "WARN" ? "text-amber-500" : "text-cyan-300";
+                con.innerHTML += `<div class="mb-1"><span class="text-gray-500">[${time}]</span> <span class="${color}">${type}:</span> ${msg}</div>`;
+                con.scrollTop = con.scrollHeight;
+            },
+
+            buildNav: function() {
+                const nav = document.getElementById('nav-container');
+                for (const key in DB) {
+                    const btn = document.createElement('button');
+                    btn.className = `w-full text-left p-3 mb-2 tech-btn text-xs font-bold border-l-4 border-transparent hover:border-${DB[key].color.split('-')[1]}-500`;
+                    btn.innerHTML = `${DB[key].label}`;
+                    btn.onmouseenter = () => audio.hover();
+                    btn.onclick = () => { audio.click(); this.openView(key); };
+                    nav.appendChild(btn);
+                }
+            },
+
+            openView: function(key) {
+                const cat = DB[key];
+                const overlay = document.getElementById('data-overlay');
+                const content = document.getElementById('view-content');
+                
+                document.getElementById('view-title').innerHTML = cat.label;
+                document.getElementById('view-title').className = `text-4xl font-['Orbitron'] ${cat.color}`;
+                
+                content.innerHTML = '';
+                cat.items.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = "bg-black/50 border border-gray-800 p-4 hover:border-cyan-500 cursor-pointer transition-all hover:bg-cyan-900/10 group";
+                    card.innerHTML = `
+                        <div class="text-[10px] text-gray-500 mb-1">${item.type}</div>
+                        <div class="text-xl font-bold text-white group-hover:text-cyan-400">${item.name}</div>
+                        <div class="mt-2 text-xs text-gray-400 font-mono">ID: ${item.id.toUpperCase()}</div>
+                    `;
+                    card.onmouseenter = () => audio.hover();
+                    card.onclick = () => { audio.click(); this.loadTarget(item, cat.hex); };
+                    content.appendChild(card);
                 });
 
-                function draw() {
-                    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-base');
-                    ctx.fillRect(0, 0, width, height);
-                    
-                    // Grid
-                    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--border');
-                    ctx.lineWidth = 0.5;
-                    ctx.beginPath();
-                    for(let x=0; x<width; x+=50) { ctx.moveTo(x,0); ctx.lineTo(x,height); }
-                    for(let y=0; y<height; y+=50) { ctx.moveTo(0,y); ctx.lineTo(width,y); }
-                    ctx.stroke();
-
-                    // Particles
-                    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--accent');
-                    particles.forEach(p => {
-                        p.x += p.vx; p.y += p.vy;
-                        if(p.x < 0) p.x = width; if(p.x > width) p.x = 0;
-                        if(p.y < 0) p.y = height; if(p.y > height) p.y = 0;
-                        ctx.globalAlpha = 0.3;
-                        ctx.beginPath();
-                        ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2);
-                        ctx.fill();
-                    });
-                    
-                    requestAnimationFrame(draw);
-                }
-                draw();
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.style.opacity = '1', 10);
+                this.log(`ACCESSING DATABASE: ${cat.label}`, "INFO");
             },
 
-            toggleTheme: function() {
-                this.currentTheme = (this.currentTheme + 1) % this.themes.length;
-                document.documentElement.setAttribute('data-theme', this.themes[this.currentTheme]);
+            closeView: function() {
+                const overlay = document.getElementById('data-overlay');
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.classList.add('hidden'), 300);
             },
 
-            view: function(key) {
-                if(key === 'home') this.renderHome();
-                else this.renderBranch(key);
-            },
-
-            renderHome: function() {
-                this.viewport.innerHTML = `
-                    <div class="flex flex-col items-center justify-center min-h-[60vh] animate-in fade-in zoom-in duration-500">
-                        <div class="w-32 h-32 border border-accent chamfer flex items-center justify-center relative mb-8 group">
-                            <div class="absolute inset-0 bg-accent/5 animate-pulse"></div>
-                            <span class="text-6xl text-accent font-tech group-hover:scale-110 transition-transform">⌬</span>
-                            <div class="absolute -bottom-6 text-[10px] font-code text-accent tracking-widest">SYSTEM READY</div>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-4xl">
-                            ${this.homeBtn('nuclear', 'STRATEGIC', 'border-amber-500/50', 'text-amber-500')}
-                            ${this.homeBtn('army', 'ARMY', 'border-emerald-500/50', 'text-emerald-500')}
-                            ${this.homeBtn('airforce', 'AIR FORCE', 'border-sky-500/50', 'text-sky-500')}
-                            ${this.homeBtn('navy', 'NAVY', 'border-blue-500/50', 'text-blue-500')}
-                            ${this.homeBtn('industry', 'INDUSTRY', 'border-purple-500/50', 'text-purple-500')}
-                            ${this.homeBtn('future', 'FUTURE', 'border-pink-500/50', 'text-pink-500')}
-                        </div>
-                    </div>
-                `;
-            },
-
-            homeBtn: function(id, text, border, color) {
-                return `
-                    <button onclick="app.view('${id}')" class="h-24 chamfer glass-panel flex flex-col items-center justify-center gap-2 hover:bg-white/5 transition-all group border-l-4 ${border.replace('/50','')}">
-                        <span class="font-tech font-bold text-xl ${color} group-hover:scale-110 transition-transform">${text}</span>
-                        <span class="text-[9px] font-code text-txtMut group-hover:text-white">ACCESS DATABANK &rarr;</span>
-                    </button>
-                `;
-            },
-
-            renderBranch: function(key) {
-                const data = DB[key];
-                let html = `
-                    <div class="max-w-7xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
-                        <div class="flex items-end justify-between border-b border-white/10 pb-4 mb-8">
-                            <div>
-                                <h2 class="text-4xl font-tech font-bold ${data.color} uppercase tracking-wide">${data.name}</h2>
-                                <div class="text-xs font-code text-txtMut mt-1">SECTOR ID: ${key.toUpperCase()} // AUTHORIZED EYES ONLY</div>
-                            </div>
-                            <button onclick="app.view('home')" class="text-xs font-bold border border-white/20 px-4 py-2 hover:bg-white/10 font-code">BACK</button>
-                        </div>
-                        <div class="space-y-8">
-                `;
-
-                for(const [catKey, cat] of Object.entries(data.cats)) {
-                    html += `
-                        <div class="glass-panel chamfer p-1">
-                            <div class="bg-black/40 p-3 flex justify-between items-center border-b border-white/5">
-                                <h3 class="font-tech font-bold text-lg text-white ml-2 border-l-2 ${data.color.replace('text','border')} pl-3">${cat.name}</h3>
-                                <div class="text-[10px] font-code text-txtMut opacity-50">CATEGORY: ${catKey.toUpperCase()}</div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-6">
-                    `;
-                    
-                    cat.items.forEach(item => {
-                        const isPinned = this.compareList.has(item.id);
-                        html += `
-                            <div class="bg-black/20 border border-white/10 p-4 relative group hover:border-${data.color.split('-')[1]}-500/50 transition-colors">
-                                <div class="absolute top-0 right-0 p-2">
-                                    <button onclick="app.togglePin('${item.id}', this)" class="pin-btn text-xs text-gray-600 hover:text-white ${isPinned ? 'active' : ''}">📌</button>
-                                </div>
-                                <div class="text-[10px] font-code text-txtMut mb-1">${item.role}</div>
-                                <div class="text-xl font-bold font-tech text-white mb-4 group-hover:text-accent transition-colors">${item.name}</div>
-                                
-                                <div class="space-y-1 mb-4">
-                                    ${Object.entries(item.specs).slice(0,3).map(([k,v]) => 
-                                        `<div class="flex justify-between text-[10px] border-b border-white/5 py-1">
-                                            <span class="text-txtMut">${k}</span><span class="font-code text-accent">${v}</span>
-                                        </div>`
-                                    ).join('')}
-                                </div>
-                                
-                                <div class="h-32 mt-2">
-                                    <canvas id="chart-${item.id}"></canvas>
-                                </div>
-                            </div>
-                        `;
-                    });
-
-                    html += `</div></div>`;
+            loadTarget: function(item, colorHex) {
+                document.getElementById('target-detail').classList.add('hidden');
+                const active = document.getElementById('active-target');
+                active.classList.remove('hidden');
+                
+                // Populate Text
+                document.getElementById('t-name').innerText = item.name;
+                document.getElementById('t-role').innerText = item.type + " // " + item.id.toUpperCase();
+                
+                const specsDiv = document.getElementById('t-specs');
+                specsDiv.innerHTML = '';
+                for(let [k,v] of Object.entries(item.specs)) {
+                    specsDiv.innerHTML += `
+                        <div class="flex justify-between border-b border-gray-800 py-1">
+                            <span class="text-gray-500 uppercase">${k}</span>
+                            <span class="text-white">${v}</span>
+                        </div>`;
                 }
 
-                html += `</div></div>`;
-                this.viewport.innerHTML = html;
-
-                // Render Charts
-                setTimeout(() => {
-                    for(const cat of Object.values(data.cats)) {
-                        cat.items.forEach(item => this.renderRadar(item, data.hex));
-                    }
-                }, 100);
+                // Render Radar Chart
+                this.renderChart(item.specs, colorHex);
+                this.log(`TARGET LOCKED: ${item.name}`, "SUCCESS");
             },
 
-            // --- 3. ADVANCED VISUALIZATION ---
-            renderRadar: function(item, colorHex) {
-                const ctx = document.getElementById(`chart-${item.id}`);
-                if(!ctx) return;
+            renderChart: function(specs, color) {
+                const ctx = document.getElementById('radar-chart');
+                
+                // Destroy old chart if exists
+                if(window.myRadar) window.myRadar.destroy();
 
-                // Normalize Data Logic (Simulated for Demo)
-                let d = [50, 50, 50, 50]; 
-                // Simple parser to create visual variety based on strings
-                const val = (str) => {
-                    if(!str) return 20;
-                    if(str.includes('Mach')) return parseInt(str.split(' ')[1]) * 5;
-                    if(str.includes('km')) return Math.min(parseInt(str.replace(/,/g,'')) / 20, 100);
-                    if(str === 'High') return 80;
-                    if(str === 'Very High') return 95;
-                    return 60;
-                };
+                const dataValues = [Math.random()*100, Math.random()*100, Math.random()*100, Math.random()*100, Math.random()*100]; // Simulated stats
 
-                const s = item.specs;
-                d = [
-                    val(s.Range || s.Focus),
-                    val(s.Speed || s.Product),
-                    val(s.Tech || s.Status),
-                    val(s.Payload || s.Firepower || s.Radar || "50")
-                ];
-
-                new Chart(ctx, {
+                window.myRadar = new Chart(ctx, {
                     type: 'radar',
                     data: {
-                        labels: ['RNG', 'SPD', 'TEC', 'PWR'],
+                        labels: ['PWR', 'RNG', 'SPD', 'STL', 'TEC'],
                         datasets: [{
-                            data: d,
-                            backgroundColor: colorHex + '40', // 40 = hex transparency
-                            borderColor: colorHex,
-                            borderWidth: 1,
+                            data: dataValues,
+                            backgroundColor: color + '33', // 20% opacity
+                            borderColor: color,
+                            borderWidth: 2,
                             pointRadius: 0
                         }]
                     },
@@ -482,8 +415,8 @@
                             r: {
                                 angleLines: { color: 'rgba(255,255,255,0.1)' },
                                 grid: { color: 'rgba(255,255,255,0.1)' },
-                                pointLabels: { color: 'rgba(255,255,255,0.5)', font: { size: 8, family: 'JetBrains Mono' } },
-                                ticks: { display: false, max: 100 }
+                                pointLabels: { color: '#fff', font: { size: 8, family: 'Share Tech Mono' } },
+                                ticks: { display: false }
                             }
                         },
                         plugins: { legend: { display: false } },
@@ -491,115 +424,105 @@
                     }
                 });
             },
-
-            // --- 4. COMPARISON ENGINE ---
-            togglePin: function(id, btn) {
-                if(this.compareList.has(id)) {
-                    this.compareList.delete(id);
-                    btn.classList.remove('active');
-                } else {
-                    if(this.compareList.size >= 3) { alert("MAX COMPARE LIMIT REACHED (3)"); return; }
-                    this.compareList.add(id);
-                    btn.classList.add('active');
-                }
-                this.updateDock();
-            },
-
-            updateDock: function() {
-                const dock = document.getElementById('compareDock');
-                const slots = document.getElementById('compareSlots');
-                slots.innerHTML = '';
-                
-                if(this.compareList.size > 0) {
-                    dock.classList.remove('translate-y-full');
-                    this.compareList.forEach(id => {
-                        // Find item name
-                        let name = id;
-                        for(const b of Object.values(DB)) for(const c of Object.values(b.cats)) {
-                            const found = c.items.find(i => i.id === id);
-                            if(found) name = found.name;
-                        }
-                        slots.innerHTML += `<div class="bg-input border border-accent px-3 py-1 text-xs font-code text-accent">${name}</div>`;
-                    });
-                } else {
-                    dock.classList.add('translate-y-full');
-                }
-            },
-
-            clearCompare: function() {
-                this.compareList.clear();
-                document.querySelectorAll('.pin-btn').forEach(b => b.classList.remove('active'));
-                this.updateDock();
-            },
-
-            runComparison: function() {
-                let items = [];
-                this.compareList.forEach(id => {
-                    for(const b of Object.values(DB)) for(const c of Object.values(b.cats)) {
-                        const found = c.items.find(i => i.id === id);
-                        if(found) items.push(found);
-                    }
-                });
-
-                let html = `
-                    <div class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl p-8 flex flex-col animate-in fade-in duration-300">
-                        <div class="flex justify-between items-center mb-8 border-b border-accent pb-4">
-                            <h2 class="text-3xl font-tech text-accent">COMPARISON MATRIX</h2>
-                            <button onclick="this.closest('.fixed').remove()" class="text-white hover:text-red-500 font-bold text-xl">✕</button>
-                        </div>
-                        <div class="grid grid-cols-${items.length} gap-8 h-full">
-                `;
-
-                items.forEach(item => {
-                    html += `
-                        <div class="bg-panel border border-white/10 chamfer p-6 flex flex-col">
-                            <h3 class="text-2xl font-bold font-tech text-white mb-2">${item.name}</h3>
-                            <div class="text-accent font-code text-xs mb-6">${item.role}</div>
-                            <div class="space-y-4 flex-1">
-                                ${Object.entries(item.specs).map(([k,v]) => `
-                                    <div class="flex justify-between border-b border-white/5 py-2">
-                                        <span class="text-txtMut text-xs font-code uppercase">${k}</span>
-                                        <span class="text-white font-bold">${v}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                });
-
-                html += `</div></div>`;
-                const div = document.createElement('div');
-                div.innerHTML = html;
-                document.body.appendChild(div);
-            },
-
-            // --- 5. SEARCH ---
-            search: function(q) {
-                if(q.length < 2) { if(q.length === 0) this.view('home'); return; }
-                q = q.toLowerCase();
-                let html = `<div class="max-w-7xl mx-auto"><h2 class="text-2xl font-tech text-white mb-6">SEARCH RESULTS FOR "<span class="text-accent">${q.toUpperCase()}</span>"</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4">`;
-                
-                for(const bKey in DB) {
-                    for(const cKey in DB[bKey].cats) {
-                        DB[bKey].cats[cKey].items.forEach(item => {
-                            if(item.name.toLowerCase().includes(q) || item.id.includes(q)) {
-                                html += `
-                                    <div onclick="app.view('${bKey}')" class="bg-panel border border-white/10 p-4 chamfer hover:border-accent cursor-pointer group transition-all">
-                                        <div class="text-white font-bold font-tech text-lg group-hover:text-accent">${item.name}</div>
-                                        <div class="text-[10px] font-code text-txtMut">${DB[bKey].name} // ${item.role}</div>
-                                    </div>
-                                `;
-                            }
-                        });
-                    }
-                }
-                html += `</div></div>`;
-                this.viewport.innerHTML = html;
+            
+            setMode: function(mode) {
+                this.log(`MODE SWITCHED TO: ${mode}`, "WARN");
+                audio.click();
             }
         };
 
-        // Initialize Background on Load (Wait for click to boot rest)
-        app.bgAnim();
+        // --- TACTICAL MAP (CANVAS) ---
+        const map = {
+            canvas: null,
+            ctx: null,
+            width: 0,
+            height: 0,
+            bogeys: [],
+            angle: 0,
+
+            init: function() {
+                this.canvas = document.getElementById('tactical-map');
+                this.ctx = this.canvas.getContext('2d');
+                
+                const resize = () => {
+                    this.width = this.canvas.width = this.canvas.offsetWidth;
+                    this.height = this.canvas.height = this.canvas.offsetHeight;
+                    this.generateBogeys();
+                };
+                window.addEventListener('resize', resize);
+                resize();
+                this.loop();
+            },
+
+            generateBogeys: function() {
+                this.bogeys = [];
+                for(let i=0; i<15; i++) {
+                    this.bogeys.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height,
+                        id: Math.floor(Math.random()*9000) + 1000,
+                        speed: Math.random() * 0.5
+                    });
+                }
+            },
+
+            loop: function() {
+                const ctx = this.ctx;
+                const w = this.width;
+                const h = this.height;
+
+                // Clear (with trail effect)
+                ctx.fillStyle = 'rgba(5, 10, 16, 0.2)';
+                ctx.fillRect(0, 0, w, h);
+
+                // Grid
+                ctx.strokeStyle = 'rgba(0, 240, 255, 0.05)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for(let x=0; x<w; x+=50) { ctx.moveTo(x,0); ctx.lineTo(x,h); }
+                for(let y=0; y<h; y+=50) { ctx.moveTo(0,y); ctx.lineTo(w,y); }
+                ctx.stroke();
+
+                // Radar Sweep
+                this.angle += 0.02;
+                ctx.save();
+                ctx.translate(w/2, h/2);
+                ctx.rotate(this.angle);
+                const grad = ctx.createLinearGradient(0, 0, w, 0);
+                grad.addColorStop(0, 'rgba(0, 240, 255, 0)');
+                grad.addColorStop(1, 'rgba(0, 240, 255, 0.2)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.moveTo(0,0);
+                ctx.arc(0,0, w, -0.1, 0.1);
+                ctx.fill();
+                ctx.restore();
+
+                // Bogeys
+                ctx.font = "10px Share Tech Mono";
+                this.bogeys.forEach(b => {
+                    // Update pos
+                    b.x += b.speed;
+                    if(b.x > w) b.x = 0;
+
+                    // Draw
+                    ctx.fillStyle = '#ff003c';
+                    ctx.fillRect(b.x, b.y, 2, 2);
+                    
+                    // Text (flickering)
+                    if(Math.random() > 0.95) {
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                        ctx.fillText(`TRK-${b.id}`, b.x + 4, b.y - 4);
+                    }
+                });
+
+                requestAnimationFrame(this.loop.bind(this));
+            }
+        };
+
+        // Run Boot
+        window.onload = sys.bootSequence;
+
     </script>
 </body>
 </html>
