@@ -3,578 +3,783 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SENTINEL | C4ISR COMMAND [FULL DB]</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-
+    <title>Nasir & Brother's ERP V34.0</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            --c-bg: #020406;
-            --c-panel: rgba(8, 14, 20, 0.95);
-            --c-prim: #00f0ff; /* Cyan */
-            --c-sec: #ff003c;  /* Red */
-            --c-warn: #fcee0a; /* Amber */
-            --c-dim: rgba(0, 240, 255, 0.1);
-            --scan-color: rgba(0, 240, 255, 0.05);
+            --primary: #107c41;
+            --dark: #1b5e20;
+            --light: #f3f2f1;
+            --white: #ffffff;
+            --border: #d4d4d4;
+            --danger: #c50f1f;
+            --blue: #0078d4;
+            --warning: #ffaa44;
+            --header-bg: #e6f2ea;
         }
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; outline: none; }
+        body { margin: 0; background: var(--light); display: flex; height: 100vh; overflow: hidden; color: #333; }
 
-        body {
-            background-color: var(--c-bg);
-            color: var(--c-prim);
-            font-family: 'Share Tech Mono', monospace;
-            height: 100vh;
-            overflow: hidden;
-            margin: 0;
-            user-select: none;
-            cursor: crosshair;
-        }
-
-        /* --- CRT & SCREEN FX --- */
-        #crt-overlay {
-            position: fixed; inset: 0; pointer-events: none; z-index: 9999;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 2px, 3px 100%;
-            animation: flicker 0.15s infinite;
-        }
+        /* --- SIDEBAR --- */
+        .sidebar { width: 240px; background: #2b579a; color: white; display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
+        .logo { padding: 15px; background: white; border-bottom: 1px solid rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 90px; color: #333; text-align: center; }
+        .logo h2 { margin: 0; font-size: 16px; font-weight: bold; color: var(--primary); }
+        .logo span { font-size: 11px; color: #666; }
+        .menu { flex: 1; padding-top: 10px; overflow-y: auto; }
+        .menu-item { padding: 12px 20px; cursor: pointer; display: flex; align-items: center; transition: 0.2s; border-left: 4px solid transparent; font-size: 14px; }
+        .menu-item:hover { background: rgba(255,255,255,0.1); }
+        .menu-item.active { background: rgba(255,255,255,0.2); border-left-color: #fff; font-weight: 600; }
+        .menu-item i { width: 25px; font-size: 16px; margin-right: 10px; text-align: center; }
         
-        .scanline {
-            width: 100%; height: 100px; z-index: 9998;
-            background: linear-gradient(0deg, rgba(0,0,0,0) 0%, var(--scan-color) 50%, rgba(0,0,0,0) 100%);
-            opacity: 0.1;
-            position: fixed; bottom: 100%;
-            animation: scanline 8s linear infinite;
-            pointer-events: none;
-        }
+        .dev-footer { padding: 8px; text-align: center; font-size: 11px; color: rgba(255,255,255,0.8); border-top: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.1); }
 
-        /* --- UI COMPONENTS --- */
-        .tech-border {
-            border: 1px solid var(--c-dim);
-            position: relative;
-            background: var(--c-panel);
-            backdrop-filter: blur(4px);
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
-        }
-        .tech-border::before, .tech-border::after {
-            content: ''; position: absolute; width: 6px; height: 6px;
-            border: 2px solid var(--c-prim); transition: all 0.3s;
-        }
-        .tech-border::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
-        .tech-border::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+        /* --- MAIN --- */
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .top-bar { height: 50px; background: var(--white); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+        .content { flex: 1; padding: 15px; overflow-y: auto; position: relative; }
+        .tab-section { display: none; height: 100%; flex-direction: column; }
+        .tab-section.active { display: flex; }
+
+        /* --- UI ELEMENTS --- */
+        .excel-toolbar { padding: 10px; background: #f8f9fa; border-bottom: 1px solid #ccc; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .excel-container { background: white; border: 1px solid #ccc; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .grid-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .grid-table th { background: var(--header-bg); border: 1px solid #ccc; padding: 8px 10px; text-align: left; font-weight: 600; position: sticky; top: 0; z-index: 10; }
+        .grid-table td { border: 1px solid #ccc; padding: 5px 10px; }
+        .grid-input { padding: 6px 8px; border: 1px solid #ccc; border-radius: 2px; font-size: 13px; width: 100%; }
         
-        .tech-btn {
-            background: linear-gradient(90deg, rgba(0, 240, 255, 0.05) 0%, transparent 100%);
-            border-left: 2px solid var(--c-dim);
-            color: #6b7280;
-            text-transform: uppercase;
-            font-family: 'Rajdhani', sans-serif;
-            font-weight: 700;
-            letter-spacing: 1px;
-            transition: all 0.2s;
+        .btn { padding: 8px 16px; border-radius: 3px; cursor: pointer; font-size: 13px; font-weight: 600; border: none; display: inline-flex; align-items: center; gap: 6px; color: white; transition: 0.2s; }
+        .btn-green { background: var(--primary); } .btn-green:hover { background: var(--dark); }
+        .btn-red { background: var(--danger); } .btn-red:hover { background: #a40e1b; }
+        .btn-blue { background: var(--blue); } .btn-blue:hover { background: #005a9e; }
+        .btn-orange { background: var(--warning); color: #333; }
+
+        /* DASHBOARD GRID - UPDATED FOR 3 COLUMNS */
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); /* FORCED 3 COLUMNS */
+            gap: 15px; 
         }
-        .tech-btn:hover, .tech-btn.active {
-            background: linear-gradient(90deg, rgba(0, 240, 255, 0.2) 0%, transparent 100%);
-            border-left: 4px solid var(--c-prim);
-            color: #fff;
-            padding-left: 1rem;
-            text-shadow: 0 0 8px var(--c-prim);
+        /* Mobile responsive check */
+        @media (max-width: 900px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .stats-grid { grid-template-columns: 1fr; }
         }
 
-        .data-card {
-            background: rgba(0,0,0,0.6);
-            border: 1px solid #1f2937;
-            transition: all 0.2s;
-        }
-        .data-card:hover {
-            border-color: var(--c-prim);
-            background: rgba(0, 240, 255, 0.05);
-            transform: translateY(-2px);
-        }
+        .card { background: white; padding: 15px; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .card h4 { margin: 0 0 5px; font-size: 11px; color: #666; text-transform: uppercase; }
+        .card .val { font-size: 18px; font-weight: bold; color: #333; transition: 0.3s; }
 
-        .blink { animation: blink 1s infinite; }
+        /* PRIVACY BLUR */
+        .blurred { filter: blur(8px); opacity: 0.6; pointer-events: none; user-select: none; }
+
+        /* POS LAYOUT */
+        .pos-container { display: flex; gap: 20px; height: 100%; }
+        .pos-left { flex: 3; display: flex; flex-direction: column; background: white; border: 1px solid #ccc; }
+        .pos-right { flex: 1.2; display: flex; flex-direction: column; gap: 15px; }
+        .cust-bar { padding: 15px; background: #eef2f5; border-bottom: 1px solid #ccc; }
+        .search-results { position: absolute; background: white; border: 1px solid #ccc; width: 100%; max-height: 200px; overflow-y: auto; z-index: 100; display: none; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .search-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; }
+        .search-item:hover { background: #e3f2fd; }
+
+        /* MODAL */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: center; }
+        .modal { background: white; padding: 25px; width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border-radius: 4px; max-height: 90vh; overflow-y: auto;}
+
+        .low-stock { background-color: #ffebee; color: #c62828; }
+        .expired-stock { background-color: #333; color: #fff; }
+        .expired-stock td { border-color: #555; }
         
-        /* --- ANIMATIONS --- */
-        @keyframes scanline { 0% { bottom: 100%; } 100% { bottom: -100%; } }
-        @keyframes flicker { 0% { opacity: 0.97; } 100% { opacity: 1; } }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        /* --- FIXED PRINT STYLES --- */
+        @media print {
+            .sidebar, .top-bar, .content, .modal-overlay, .dev-footer { display: none !important; }
+            #print-area { display: block !important; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: white; padding: 20px; z-index: 9999; }
+            @page { margin: 0; size: auto; }
+            body { margin: 1cm; }
+        }
+        #print-area { display: none; }
         
-        /* --- LAYOUT GRID --- */
-        #main-grid {
-            display: grid;
-            grid-template-columns: 260px 1fr 320px;
-            grid-template-rows: 50px 1fr 40px;
-            height: 100vh;
-            gap: 8px;
-            padding: 8px;
-            opacity: 0; 
-        }
+        .inv-summary-table { width: 100%; margin-top: 20px; border-top: 2px solid #333; }
+        .inv-summary-table td { padding: 5px 0; font-size: 14px; }
+        .inv-total-row { border-top: 1px solid #ccc; font-weight: bold; font-size: 16px; }
 
-        /* --- SCROLLBARS --- */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: #000; }
-        ::-webkit-scrollbar-thumb { background: #374151; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--c-prim); }
-
-        /* --- BIOS SCREEN --- */
-        #bios-screen {
-            position: fixed; inset: 0; background: #000; z-index: 10000;
-            padding: 40px; font-family: 'Share Tech Mono', monospace;
-            color: var(--c-prim); font-size: 14px; line-height: 1.5;
-        }
+        .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; color:white; }
+        .badge-sale { background: #2b579a; }
+        .badge-pay { background: #107c41; }
     </style>
 </head>
 <body>
 
-    <div id="crt-overlay"></div>
-    <div class="scanline"></div>
+    <div class="sidebar">
+        <div class="logo">
+            <h2>Nasir & Brother's</h2>
+            <span>Prop: Nasir Ahmad</span>
+        </div>
+        
+        <div class="menu">
+            <div class="menu-item active" onclick="nav('dash')"><i class="fas fa-chart-line"></i> Dashboard</div>
+            <div class="menu-item" onclick="nav('pos')"><i class="fas fa-cash-register"></i> Billing (POS)</div>
+            <div class="menu-item" onclick="nav('udhar')"><i class="fas fa-file-invoice-dollar"></i> Udhar List</div>
+            <div class="menu-item" onclick="nav('transactions')"><i class="fas fa-history"></i> Transaction History</div>
+            <div class="menu-item" onclick="nav('cust')"><i class="fas fa-users"></i> Customers</div>
+            <div style="border-top:1px solid rgba(255,255,255,0.1); margin: 5px 0;"></div>
+            <div class="menu-item" onclick="nav('stock-all')"><i class="fas fa-boxes"></i> All Inventory</div>
+            <div class="menu-item" onclick="nav('stock-sungro')"><i class="fas fa-seedling"></i> Sungro Stock</div>
+            <div class="menu-item" onclick="nav('stock-fmc')"><i class="fas fa-flask"></i> FMC Stock</div>
+            <div class="menu-item" onclick="nav('stock-misc')"><i class="fas fa-cube"></i> Misc Stock</div>
+            <div class="menu-item" onclick="nav('stock-expired')"><i class="fas fa-calendar-times" style="color:#ff8888;"></i> Expired Stock</div>
+            <div style="border-top:1px solid rgba(255,255,255,0.1); margin: 5px 0;"></div>
+            <div class="menu-item" onclick="nav('expenses')"><i class="fas fa-receipt"></i> Expenses</div>
+            <div class="menu-item" onclick="nav('dues')"><i class="fas fa-hand-holding-usd"></i> Company Dues</div>
+            <div class="menu-item" onclick="nav('settings')"><i class="fas fa-cogs"></i> Settings</div>
+        </div>
 
-    <div id="bios-screen">
-        <div id="bios-text"></div>
-        <button id="init-btn" class="hidden mt-8 border border-cyan-500 px-8 py-2 hover:bg-cyan-500 hover:text-black font-bold animate-pulse tracking-widest" onclick="sys.init()">[ INITIALIZE SYSTEM ]</button>
+        <div class="dev-footer">
+            Nasir & Brother's ERP<br>
+            0301-7442701 | 0316-4666517
+        </div>
     </div>
 
-    <div id="main-grid">
-        
-        <header class="col-span-3 tech-border flex items-center justify-between px-4 bg-black/80">
-            <div class="flex items-center gap-3">
-                <div class="w-6 h-6 bg-cyan-500 text-black flex items-center justify-center font-bold text-lg chamfer">S</div>
-                <h1 class="font-['Orbitron'] text-xl tracking-[0.2em] font-bold text-white">SENTINEL<span class="text-cyan-500">_DB</span> <span class="text-[9px] text-gray-500 ml-2">v99.0 FULL_DATASET</span></h1>
-            </div>
-            
-            <div class="flex-1 mx-12 overflow-hidden relative h-full flex items-center">
-                <div class="absolute whitespace-nowrap animate-[marquee_20s_linear_infinite] text-[10px] text-amber-500 font-mono">
-                    /// UPLINK ESTABLISHED /// DATABASE INTEGRITY: 100% /// 245 ASSETS LOADED /// STRATEGIC COMMAND: ONLINE /// AIR DEFENSE: ACTIVE ///
+    <div class="main">
+        <div class="top-bar">
+            <div style="font-weight:600; font-size:18px; color:var(--primary);">Nasir & Brother's ERP</div>
+            <div id="date-display" style="font-size:13px; font-weight:600; color:#555;"></div>
+        </div>
+
+        <div class="content">
+
+            <div id="dash" class="tab-section active">
+                <div style="text-align:center; padding: 15px; background: white; border-bottom: 1px solid #ddd; margin-bottom: 20px; border-radius: 5px;">
+                    <img src="5.jpeg" style="max-height: 250px; max-width: 100%; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" onerror="this.style.display='none'">
+                    <h2 style="margin:10px 0 0 0; color:#2b579a;">Nasir & Brother's</h2>
+                    <p style="margin:0; color:#666;">Main Chowk Tatay Pur, Multan</p>
                 </div>
-            </div>
 
-            <div class="flex gap-4 text-[10px] font-bold font-mono">
-                <div class="text-red-500 blink">DEFCON 3</div>
-                <div class="text-cyan-500">ENCRYPTION: AES-256</div>
-                <div id="sys-clock" class="text-white">00:00:00</div>
-            </div>
-        </header>
-
-        <nav class="tech-border row-span-2 flex flex-col p-2 bg-black/40">
-            <div class="text-[9px] text-cyan-900 font-bold mb-2 tracking-widest border-b border-cyan-900/30 pb-1">TACTICAL MODULES</div>
-            <div id="nav-container" class="space-y-1 flex-1 overflow-y-auto custom-scrollbar">
-                </div>
-            
-            <div class="mt-2 pt-2 border-t border-cyan-900/30">
-                <div class="flex justify-between text-[9px] text-gray-500 mb-1"><span>DB LOAD</span><span>100%</span></div>
-                <div class="w-full h-1 bg-gray-900"><div class="h-full bg-cyan-500 w-full"></div></div>
-            </div>
-        </nav>
-
-        <main class="tech-border relative overflow-hidden group bg-black">
-            <canvas id="tactical-map" class="absolute inset-0 opacity-40"></canvas>
-            
-            <div class="absolute inset-0" style="background-image: linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px); background-size: 40px 40px;"></div>
-
-            <div id="data-view" class="absolute inset-0 bg-black/80 backdrop-blur-md p-6 hidden flex flex-col transition-opacity duration-300">
-                <div class="flex justify-between items-center border-b border-white/10 pb-4 mb-4 shrink-0">
-                    <div>
-                        <h2 id="view-title" class="text-3xl font-['Orbitron'] font-bold text-white tracking-wider"></h2>
-                        <div id="view-subtitle" class="text-[10px] text-cyan-500 font-mono tracking-widest mt-1"></div>
+                <div style="padding:0 20px 20px 20px;">
+                    <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+                        <button id="privacy-btn" class="btn btn-blue" onclick="togglePrivacy()">
+                            <i class="fas fa-eye"></i> Show Amounts
+                        </button>
                     </div>
-                    <button onclick="ui.closeView()" class="text-[10px] border border-red-500/50 text-red-500 px-3 py-1 hover:bg-red-500 hover:text-black transition-colors font-bold">TERMINATE STREAM</button>
-                </div>
-                <div id="view-content" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 overflow-y-auto pr-2 custom-scrollbar pb-10">
-                    </div>
-            </div>
 
-            <div id="idle-reticle" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                <div class="w-40 h-40 border border-cyan-500/20 rounded-full flex items-center justify-center animate-[spin_10s_linear_infinite]">
-                    <div class="w-full h-px bg-cyan-500/20"></div>
-                    <div class="h-full w-px bg-cyan-500/20"></div>
-                </div>
-                <div class="text-center mt-4 text-[10px] text-cyan-500/50 animate-pulse">AWAITING INPUT</div>
-            </div>
-        </main>
-
-        <aside class="tech-border row-span-2 flex flex-col bg-black/60">
-            <div class="flex-1 p-4 flex flex-col overflow-hidden relative">
-                <div class="absolute top-0 right-0 p-1">
-                    <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                </div>
-                <div class="text-[9px] text-gray-500 mb-2 font-bold tracking-widest">ASSET DIAGNOSTICS</div>
-                
-                <div id="empty-state" class="flex-1 flex flex-col items-center justify-center text-gray-700">
-                    <div class="text-4xl mb-2 opacity-20">⌬</div>
-                    <div class="text-[10px]">SELECT UNIT</div>
-                </div>
-
-                <div id="target-data" class="hidden flex flex-col h-full">
-                    <h3 id="t-name" class="text-lg font-bold text-white font-['Orbitron'] leading-none mb-1"></h3>
-                    <div id="t-type" class="text-[10px] text-cyan-400 font-mono mb-4 border-b border-gray-800 pb-2"></div>
-                    
-                    <div id="t-specs" class="space-y-1 text-[10px] font-mono mb-4 overflow-y-auto max-h-[150px] custom-scrollbar"></div>
-                    
-                    <div class="flex-1 min-h-[180px] relative border border-gray-800 bg-black/40 rounded-sm">
-                        <canvas id="radar-chart"></canvas>
-                        <div class="absolute bottom-1 right-2 text-[8px] text-gray-600">PERFORMANCE EST.</div>
+                    <div class="stats-grid">
+                        <div class="card" style="border-left: 4px solid #2b579a;"><h4>1. FMC Stock Value</h4><div class="val blurred" id="d-fmc">0</div></div>
+                        <div class="card" style="border-left: 4px solid #107c41;"><h4>2. Sungro Stock Value</h4><div class="val blurred" id="d-sungro">0</div></div>
+                        <div class="card" style="border-left: 4px solid #ffaa44;"><h4>3. Misc Stock Value</h4><div class="val blurred" id="d-misc">0</div></div>
+                        
+                        <div class="card" style="border-left: 4px solid #333;"><h4>4. Total Stock Value</h4><div class="val blurred" id="d-total-stock">0</div></div>
+                        <div class="card" style="border-left: 4px solid #0078d4;"><h4>5. Total Sales</h4><div class="val blurred" id="d-sale">0</div></div>
+                        <div class="card" style="border-left: 4px solid #c50f1f;"><h4>6. Total Expense</h4><div class="val blurred" id="d-exp">0</div></div>
+                        
+                        <div class="card" style="border-left: 4px solid #c50f1f;"><h4>7. Market Receivable</h4><div class="val blurred" id="d-market-due" style="color:red">0</div></div>
+                        <div class="card" style="border-left: 4px solid green;"><h4>8. Est. Profit (Net)</h4><div class="val blurred" id="d-prof" style="color:green">0</div></div>
+                        <div class="card" style="border-left: 4px solid #800000;"><h4>9. Company Dues</h4><div class="val blurred" id="d-comp-due">0</div></div>
+                        
+                        <div class="card" style="border-left: 4px solid #555;"><h4>10. Other Dues</h4><div class="val blurred" id="d-other-due">0</div></div>
                     </div>
                 </div>
             </div>
 
-            <div class="h-1/3 border-t border-cyan-900/30 bg-black flex flex-col p-2">
-                <div class="text-[9px] text-gray-600 mb-1 border-b border-gray-800">COMMAND_LOG</div>
-                <div id="console" class="flex-1 overflow-y-auto font-mono text-[9px] text-green-500/80 space-y-1 custom-scrollbar"></div>
-            </div>
-        </aside>
+            <div id="pos" class="tab-section">
+                <div class="pos-container">
+                    <div class="pos-left">
+                        <div class="cust-bar">
+                            <div style="position:relative; width:100%;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                                    <span style="font-weight:bold; color:#555;">Customer (Optional):</span>
+                                    <span id="cust-bal-display" style="font-weight:bold; color:var(--danger);"></span>
+                                </div>
+                                <div style="display:flex; gap:10px;">
+                                    <input type="text" id="pos-search" class="grid-input" placeholder="Search Customer or Leave Blank..." onkeyup="searchCust()" autocomplete="off">
+                                    <input type="hidden" id="selected-cust-id">
+                                    <button id="btn-add-new" class="btn btn-blue" style="display:none;" onclick="quickAddCust()"><i class="fas fa-plus"></i> New</button>
+                                </div>
+                                <div id="search-res" class="search-results"></div>
+                            </div>
+                        </div>
 
-        <footer class="col-span-3 tech-border flex items-center justify-between px-4 bg-black">
-            <div class="flex gap-4">
-                <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span class="text-[10px] text-gray-400">SERVER: ISLAMABAD_HQ_1</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 bg-amber-500 rounded-full"></div>
-                    <span class="text-[10px] text-gray-400">SAT: PAKSAT-MM1</span>
+                        <div class="excel-toolbar">
+                            <select id="p-item" class="grid-input" style="flex:2;" onchange="fillPrice()"><option>Select Product</option></select>
+                            <input type="number" id="p-qty" class="grid-input" placeholder="Qty" style="width:70px;" onkeypress="if(event.key==='Enter') addToCart()">
+                            <input type="number" id="p-price" class="grid-input" placeholder="List Price" style="width:80px; background:#eee;" readonly>
+                            <input type="number" id="p-disc" class="grid-input" placeholder="Final Rate" style="width:80px;" value="0">
+                            <button class="btn btn-green" onclick="addToCart()">Add</button>
+                        </div>
+                        <div class="excel-container">
+                            <div style="overflow:auto; flex:1;">
+                                <table class="grid-table">
+                                    <thead><tr><th>Product</th><th>Qty</th><th>Ref Price</th><th>Final Rate</th><th>Total</th><th>Action</th></tr></thead>
+                                    <tbody id="cart-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pos-right">
+                        <div style="background:white; padding:15px; border:1px solid #ccc;">
+                            <div style="font-size:24px; font-weight:bold; color:var(--primary); text-align:right;">Total: <span id="lbl-total">0</span></div>
+                        </div>
+                        <div style="background:white; padding:15px; border:1px solid #ccc;">
+                             <label style="font-size:12px; font-weight:bold;">Paid Amount</label>
+                            <input type="number" id="pay-input" class="grid-input" style="font-size:18px; font-weight:bold; margin-bottom:10px;" oninput="calcLogic()">
+                            <div id="logic-msg" style="font-size:13px; margin-bottom:10px; font-weight:bold;"></div>
+                            <button class="btn btn-green" style="width:100%; padding:15px; font-size:16px;" onclick="saveBill()">
+                                <i class="fas fa-print"></i> SAVE & PRINT
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="text-[9px] text-cyan-900">RESTRICTED ACCESS // AUTHORIZED PERSONNEL ONLY</div>
-        </footer>
+
+            <div id="udhar" class="tab-section">
+                <div class="excel-toolbar" style="background:#fff3cd;">
+                    <strong style="color:#856404;">Pending Udhar List</strong>
+                    <input type="text" id="u-search" class="grid-input" placeholder="Search..." style="width:200px; margin-left:auto;" onkeyup="renderUdhar()">
+                </div>
+                <div class="excel-container">
+                    <div style="overflow:auto; height:100%;">
+                        <table class="grid-table">
+                            <thead><tr><th>Name</th><th>Phone</th><th>City</th><th>Total Udhar</th><th>Action</th></tr></thead>
+                            <tbody id="udhar-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="transactions" class="tab-section">
+                <div class="excel-toolbar">
+                    <strong style="color:var(--primary);">Transaction History (Invoices & Payments)</strong>
+                    <input type="text" id="tr-search" class="grid-input" placeholder="Search..." style="width:200px; margin-left:auto;" onkeyup="renderTrans()">
+                </div>
+                <div class="excel-container">
+                    <div style="overflow:auto; height:100%;">
+                        <table class="grid-table">
+                            <thead><tr><th>ID</th><th>Date</th><th>Type</th><th>Customer</th><th>Description</th><th>Amount</th></tr></thead>
+                            <tbody id="trans-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="stock-section" class="tab-section">
+                <div class="excel-toolbar">
+                    <img id="stock-brand-logo" src="" style="height: 50px; margin-right: 20px; display: none;">
+                    <h3 id="stock-title" style="margin:0 10px 0 0; color:var(--primary);">Inventory</h3>
+                    <button class="btn btn-blue" onclick="openNewStockModal()"><i class="fas fa-plus"></i> Add Product</button>
+                    <input type="text" id="st-search" class="grid-input" placeholder="Search..." style="width:200px; margin-left:auto;" onkeyup="renderStock()">
+                </div>
+                <div class="excel-container">
+                    <div style="overflow:auto; height:100%;">
+                        <table class="grid-table">
+                            <thead><tr><th>Batch</th><th>Product</th><th>Category</th><th>Cost</th><th>Price</th><th>Expiry</th><th>Qty</th><th>Value</th><th>Action</th></tr></thead>
+                            <tbody id="st-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="cust" class="tab-section">
+                <div class="excel-toolbar">
+                    <button class="btn btn-blue" onclick="openNewCustModal()"><i class="fas fa-user-plus"></i> Add Customer</button>
+                    <input type="text" id="c-search" class="grid-input" placeholder="Search..." style="width:200px; margin-left:auto;" onkeyup="renderCust()">
+                </div>
+                <div class="excel-container">
+                    <div style="overflow:auto; height:100%;">
+                        <table class="grid-table">
+                            <thead><tr><th>Name</th><th>Phone</th><th>City</th><th>Action</th></tr></thead>
+                            <tbody id="cust-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="expenses" class="tab-section">
+                <div class="excel-toolbar">
+                    <strong>Daily Expenses</strong>
+                    <input type="text" id="ex-desc" class="grid-input" placeholder="Description (e.g., Tea, Bill)" style="width:200px; margin-left:10px;">
+                    <input type="number" id="ex-amt" class="grid-input" placeholder="Amount" style="width:100px; margin-left:5px;">
+                    <button class="btn btn-red" onclick="addExpense()">Add Expense</button>
+                </div>
+                <div class="excel-container">
+                    <table class="grid-table">
+                        <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Action</th></tr></thead>
+                        <tbody id="exp-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="dues" class="tab-section">
+                <div class="excel-toolbar">
+                    <strong>Company & Other Dues</strong>
+                    <select id="due-type" class="grid-input" style="width:120px; margin-left:10px;">
+                        <option value="Company">Company</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <input type="text" id="due-name" class="grid-input" placeholder="Name/Description" style="width:200px; margin-left:5px;">
+                    <input type="number" id="due-amt" class="grid-input" placeholder="Amount" style="width:100px; margin-left:5px;">
+                    <button class="btn btn-orange" onclick="addDue()">Add Due</button>
+                </div>
+                <div class="excel-container">
+                    <table class="grid-table">
+                        <thead><tr><th>Type</th><th>Name</th><th>Amount</th><th>Action</th></tr></thead>
+                        <tbody id="dues-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="settings" class="tab-section">
+                <div style="padding:40px;">
+                    <button class="btn btn-green" onclick="backup()">Backup Data</button>
+                    <button class="btn btn-red" onclick="resetSys()">Reset System</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="modal-cust" class="modal-overlay">
+        <div class="modal">
+            <h3>Customer Details</h3>
+            <input type="hidden" id="nc-id">
+            <label>Name</label><input type="text" id="nc-name" class="grid-input" style="width:100%; margin-bottom:10px;">
+            <label>Phone</label><input type="text" id="nc-phone" class="grid-input" style="width:100%; margin-bottom:10px;">
+            <label>City</label><input type="text" id="nc-city" class="grid-input" style="width:100%; margin-bottom:20px;">
+            <div style="text-align:right; margin-top:20px;">
+                <button class="btn btn-red" onclick="closeModal()">Close</button>
+                <button class="btn btn-green" onclick="saveCust()">Save Info</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-receive" class="modal-overlay">
+        <div class="modal">
+            <h3 style="margin-top:0;">Receive Payment</h3>
+            <input type="hidden" id="rec-cust-id">
+            <div style="background:#eef2f5; padding:10px; border-radius:4px; margin-bottom:15px;">
+                <strong>Customer:</strong> <span id="rec-name"></span><br>
+                <strong>Total Udhar:</strong> <span id="rec-due" style="color:red; font-weight:bold;">0</span>
+            </div>
+            <label>Amount Receiving</label>
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <input type="number" id="rec-amt" class="grid-input" style="font-size:16px; font-weight:bold;">
+                <button class="btn btn-blue" onclick="fillFullPayment()">Full Amount</button>
+            </div>
+            <label>Description/Note</label>
+            <input type="text" id="rec-desc" class="grid-input" placeholder="e.g. Cash Handover" style="margin-bottom:20px;">
+            <div style="text-align:right;">
+                <button class="btn btn-red" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-green" onclick="processPayment()">Save Payment</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-stock" class="modal-overlay">
+        <div class="modal">
+            <h3>Product Stock Details</h3>
+            <input type="hidden" id="ns-id"> <label>Category</label>
+            <select id="ns-cat" class="grid-input" style="width:100%; margin-bottom:10px;">
+                <option value="Sungro">Sungro</option>
+                <option value="FMC">FMC</option>
+                <option value="Misc">Misc</option>
+            </select>
+            <label>Product Name</label><input type="text" id="ns-name" class="grid-input" style="width:100%; margin-bottom:10px;">
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1"><label>Cost</label><input type="number" id="ns-cost" class="grid-input"></div>
+                <div style="flex:1"><label>Price</label><input type="number" id="ns-price" class="grid-input"></div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <div style="flex:1"><label>Qty</label><input type="number" id="ns-qty" class="grid-input"></div>
+                <div style="flex:1"><label>Batch #</label><input type="text" id="ns-batch" class="grid-input"></div>
+            </div>
+             <label style="margin-top:10px; display:block;">Expiry Date</label><input type="date" id="ns-exp" class="grid-input" style="width:100%; margin-bottom:10px;">
+            
+            <label style="font-weight:bold; margin-top:10px; display:block;">Payment Method (Only for New Stock):</label>
+            <select id="ns-pay-type" class="grid-input" style="width:100%;">
+                <option value="Cash">Cash (Paid from Shop)</option>
+                <option value="Credit">Credit (Add to Company Dues)</option>
+            </select>
+
+            <div style="text-align:right; margin-top:20px;">
+                <button class="btn btn-red" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-green" onclick="saveStock()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="print-area">
+        <div style="text-align:center; border-bottom:2px solid #333; padding-bottom:10px; margin-bottom:20px;">
+            <h1 style="margin: 0; font-size: 28px; text-transform: uppercase;">Nasir & Brother's</h1>
+            <p style="margin: 2px 0; font-weight: bold; font-size: 14px;">Main Chowk Tatay Pur, Multan</p>
+            <p style="margin: 2px 0; font-size: 12px;">Prop: Nasir Ahmad | 0301-7442701, 0316-4666517</p>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+            <div><strong>Bill To:</strong> <span id="pr-cust"></span><br><span id="pr-phone"></span></div>
+            <div style="text-align:right;"><strong>Inv #:</strong> <span id="pr-inv"></span><br><strong>Date:</strong> <span id="pr-date"></span></div>
+        </div>
+        <table class="grid-table" style="width:100%;">
+            <thead><tr><th>Product</th><th>Qty</th><th>Rate</th><th>Total</th></tr></thead>
+            <tbody id="pr-body"></tbody>
+        </table>
+        <table class="inv-summary-table" align="right" style="width: 250px; margin-left: auto;">
+            <tr><td><strong>Total:</strong></td><td style="text-align:right;" id="pr-total">0</td></tr>
+            <tr><td>Previous:</td><td style="text-align:right;" id="pr-prev">0</td></tr>
+            <tr><td>Total Paid:</td><td style="text-align:right;" id="pr-paid">0</td></tr>
+            <tr class="inv-total-row"><td>Remaining:</td><td style="text-align:right;" id="pr-rem">0</td></tr>
+        </table>
+        <div style="clear:both; text-align:center; padding-top:50px; font-style:italic;">Thank you for your business!</div>
     </div>
 
     <script>
-        // --- THE FULL DATABASE (Migrated) ---
-        const DB = {
-            strategic: { 
-                label: "STRATEGIC CMD", color: "text-amber-500", hex: "#f59e0b",
-                items: [
-                    { id: "shaheen3", name: "SHAHEEN-III", type: "MRBM", specs: { "RANGE": "2,750 KM", "WARHEAD": "NUC/HE/EMP", "SPEED": "MACH 18", "GUIDANCE": "INS/GPS" } },
-                    { id: "ababeel", name: "ABABEEL", type: "MIRV MRBM", specs: { "RANGE": "2,200 KM", "PAYLOAD": "MIRV x3", "SPEED": "MACH 15", "TECH": "STG-3 SOLID" } },
-                    { id: "shaheen2", name: "SHAHEEN-II", type: "MRBM", specs: { "RANGE": "2,000 KM", "WARHEAD": "SINGLE", "SPEED": "MACH 12", "PLATFORM": "TEL" } },
-                    { id: "ghauri", name: "GHAURI (HATF-V)", type: "MRBM", specs: { "RANGE": "1,300 KM", "FUEL": "LIQUID", "ORIGIN": "KRL" } },
-                    { id: "shaheen1a", name: "SHAHEEN-IA", type: "SRBM", specs: { "RANGE": "900 KM", "ACCURACY": "HIGH", "ROLE": "TACTICAL" } },
-                    { id: "nasr", name: "NASR (HATF-IX)", type: "TNW", specs: { "RANGE": "70 KM", "ROLE": "SHOOT & SCOOT", "WARHEAD": "SUB-KT NUC" } },
-                    { id: "babur3", name: "BABUR-III", type: "SLCM", specs: { "RANGE": "450 KM", "LAUNCH": "UNDERWATER", "TYPE": "CRUISE", "STEALTH": "YES" } },
-                    { id: "babur2", name: "BABUR-II", type: "GLCM", specs: { "RANGE": "700 KM", "GUIDANCE": "TERCOM/DSMAC", "ACCURACY": "PINPOINT" } },
-                    { id: "raad2", name: "RA'AD-II", type: "ALCM", specs: { "RANGE": "600 KM", "LAUNCH": "AIR (MIRAGE)", "PROPULSION": "TURBOFAN" } }
-                ]
-            },
-            land: { 
-                label: "LAND FORCES", color: "text-emerald-500", hex: "#10b981",
-                items: [
-                    { id: "vt4", name: "VT-4 HAIDER", type: "MBT", specs: { "MAIN GUN": "125MM", "ENGINE": "1200 HP", "ARMOR": "COMPOSITE/ERA", "APS": "GL-5" } },
-                    { id: "alkhalid1", name: "AL-KHALID I", type: "MBT", specs: { "MAIN GUN": "125MM", "ENGINE": "1200 HP", "SPEED": "72 KM/H", "ORIGIN": "HIT" } },
-                    { id: "t80ud", name: "T-80UD", type: "MBT", specs: { "ENGINE": "1000 HP", "ARMOR": "ERA", "ORIGIN": "UKRAINE" } },
-                    { id: "fatah1", name: "FATAH-1", type: "GMLRS", specs: { "RANGE": "140 KM", "GUIDANCE": "GPS/INS", "CALIBER": "300MM" } },
-                    { id: "a100", name: "A-100", type: "MLRS", specs: { "RANGE": "100 KM", "SALVO": "10 ROCKETS", "CALIBER": "300MM" } },
-                    { id: "sh15", name: "SH-15", type: "SP HOWITZER", specs: { "CALIBER": "155MM/52", "RANGE": "53 KM", "PLATFORM": "6x6 TRUCK" } },
-                    { id: "m109a5", name: "M109A5", type: "SP HOWITZER", specs: { "CALIBER": "155MM", "RANGE": "30 KM", "ORIGIN": "USA" } },
-                    { id: "z10me", name: "Z-10ME", type: "ATTACK HELO", specs: { "ARMAMENT": "AKD-10", "SENSORS": "M.A.W.S", "ENGINE": "IMPROVED" } },
-                    { id: "cobra", name: "AH-1F COBRA", type: "ATTACK HELO", specs: { "ARMAMENT": "TOW MISSILE", "STATUS": "AGING", "ORIGIN": "USA" } }
-                ]
-            },
-            air: { 
-                label: "AIR SUPERIORITY", color: "text-cyan-400", hex: "#22d3ee",
-                items: [
-                    { id: "j10c", name: "J-10C DRAGON", type: "OMNI-ROLE", specs: { "RADAR": "AESA KLJ-7A", "ENGINE": "WS-10B", "MISSILES": "PL-15/PL-10", "SPEED": "MACH 1.8" } },
-                    { id: "jf173", name: "JF-17 BLOCK III", type: "MULTI-ROLE", specs: { "RADAR": "KLJ-7A AESA", "HMD": "YES", "EW SUITE": "ADVANCED", "ENGINE": "RD-93MA" } },
-                    { id: "f16c", name: "F-16C/D BLK 52+", type: "MULTI-ROLE", specs: { "RADAR": "APG-68(V)9", "TANKS": "CFT", "ARMAMENT": "AMRAAM C-5", "ORIGIN": "USA" } },
-                    { id: "mirage_rose", name: "MIRAGE ROSE", type: "STRIKE", specs: { "ROLE": "DEEP STRIKE", "WEAPON": "RA'AD ALCM", "RADAR": "GRIFO-M3" } },
-                    { id: "zdk03", name: "ZDK-03", type: "AEW&C", specs: { "RADAR": "AESA ROTODOME", "RANGE": "450 KM", "PLATFORM": "Y-8" } },
-                    { id: "saab2000", name: "SAAB ERIEYE", type: "AEW&C", specs: { "RADAR": "PS-890 AESA", "TYPE": "DORSAL UNIT", "ORIGIN": "SWEDEN" } },
-                    { id: "il78", name: "IL-78 MIDAS", type: "TANKER", specs: { "ROLE": "REFUELING", "CAPACITY": "HUGE", "ORIGIN": "UKRAINE/RUSSIA" } },
-                    { id: "shahpar3", name: "SHAHPAR-III", type: "MALE UCAV", specs: { "HARDPOINTS": "6", "ENDURANCE": "20+ HRS", "SATCOM": "YES", "ORIGIN": "GIDS" } },
-                    { id: "akinci", name: "BAYRAKTAR AKINCI", type: "HALE UCAV", specs: { "PAYLOAD": "1.3 TONS", "ALTITUDE": "40,000 FT", "ORIGIN": "TURKEY" } },
-                    { id: "tb2", name: "BAYRAKTAR TB2", type: "MALE UCAV", specs: { "ROLE": "SEAD/STRIKE", "PROVEN": "COMBAT", "ORIGIN": "TURKEY" } }
-                ]
-            },
-            sea: { 
-                label: "NAVAL WARFARE", color: "text-blue-500", hex: "#3b82f6",
-                items: [
-                    { id: "hangor", name: "HANGOR CLASS", type: "SSK SUBMARINE", specs: { "PROPULSION": "STIRLING AIP", "MISSILES": "BABUR-3", "ORIGIN": "CHINA/PAK" } },
-                    { id: "agosta90b", name: "AGOSTA 90B", type: "SSK SUBMARINE", specs: { "PROPULSION": "MESMA AIP", "MISSILES": "EXOCET/HARPOON", "ORIGIN": "FRANCE/PAK" } },
-                    { id: "054ap", name: "TUGHRIL CLASS", type: "FRIGATE", specs: { "VLS": "32 CELL", "MISSILES": "CM-302 SUPERSONIC", "RADAR": "SR2410C AESA" } },
-                    { id: "babur_ship", name: "BABUR CLASS", type: "CORVETTE", specs: { "ROLE": "ASW/ASuW", "DISPLACEMENT": "3000 TONS", "ORIGIN": "TURKEY/PAK" } },
-                    { id: "f22p", name: "ZULFIQUAR CLASS", type: "FRIGATE", specs: { "ROLE": "MULTI-PURPOSE", "MISSILES": "C-802", "ORIGIN": "CHINA/PAK" } },
-                    { id: "yarmook", name: "YARMOOK CLASS", type: "OPV", specs: { "ROLE": "PATROL", "MODULES": "MISSION CONTAINERS", "ORIGIN": "DAMEN" } },
-                    { id: "seasultan", name: "SEA SULTAN", type: "LRMP", specs: { "PLATFORM": "EMBRAER LINEAGE", "ROLE": "ASW/MPA", "STATUS": "CONVERSION" } },
-                    { id: "p3c", name: "P-3C ORION", type: "LRMP", specs: { "ROLE": "ASW", "RANGE": "LONG", "ARMAMENT": "HARPOON", "ORIGIN": "USA" } }
-                ]
-            },
-            ad: { 
-                label: "AIR DEFENSE", color: "text-red-400", hex: "#f87171",
-                items: [
-                    { id: "hq9p", name: "HQ-9/P", type: "HIMADS", specs: { "RANGE": "250 KM", "ALTITUDE": "27 KM", "RADAR": "SJ-212 AESA", "ROLE": "STRATEGIC AD" } },
-                    { id: "ly80", name: "LY-80 (HQ-16)", type: "LOMADS", specs: { "RANGE": "70 KM", "GUIDANCE": "SEMI-ACTIVE", "ROLE": "AREA DEFENSE" } },
-                    { id: "spada", name: "SPADA 2000", type: "LOMADS", specs: { "RANGE": "25 KM", "ORIGIN": "ITALY", "UPGRADED": "YES" } },
-                    { id: "fm90", name: "FM-90", type: "SHORAD", specs: { "RANGE": "15 KM", "PLATFORM": "MOBILE 6x6", "ROLE": "POINT DEFENSE" } },
-                    { id: "anza", name: "ANZA MK-III", type: "MANPADS", specs: { "RANGE": "6 KM", "GUIDANCE": "IR HOMING", "ORIGIN": "KRL" } }
-                ]
-            },
-            industry: { 
-                label: "IND. COMPLEX", color: "text-purple-400", hex: "#c084fc",
-                items: [
-                    { id: "pac", name: "PAC KAMRA", type: "AEROSPACE", specs: { "PRODUCTS": "JF-17, MUSHSHAK", "MRO": "ALL PAF FLEET", "STATUS": "ACTIVE" } },
-                    { id: "hit", name: "HIT TAXILA", type: "LAND SYSTEMS", specs: { "PRODUCTS": "AL-KHALID, APCs", "FOCUS": "ARMOR", "STATUS": "ACTIVE" } },
-                    { id: "gids", name: "GIDS", type: "TECH/ELECTRONICS", specs: { "PRODUCTS": "UAVs, FATAH-1", "FOCUS": "R&D", "STATUS": "ACTIVE" } },
-                    { id: "nescom", name: "NESCOM", type: "STRATEGIC", specs: { "PRODUCTS": "MISSILES", "FOCUS": "CLASSIFIED", "STATUS": "ACTIVE" } },
-                    { id: "ksew", name: "KSEW", type: "SHIPYARD", specs: { "PRODUCTS": "SUBMARINES, SHIPS", "LOC": "KARACHI", "STATUS": "EXPANDING" } },
-                    { id: "pof", name: "POF WAH", type: "ORDNANCE", specs: { "PRODUCTS": "AMMO, RIFLES", "EXPORT": "GLOBAL", "STATUS": "ACTIVE" } }
-                ]
-            },
-            future: { 
-                label: "BLACK OPS / R&D", color: "text-pink-500", hex: "#ec4899",
-                items: [
-                    { id: "pfx", name: "PROJECT AZM (PF-X)", type: "5TH GEN FIGHTER", specs: { "STEALTH": "LO", "ENGINE": "SUPERCRUISE", "STATUS": "DESIGN PHASE" } },
-                    { id: "hypersonic", name: "P-282", type: "HYPERSONIC RV", specs: { "SPEED": "MACH 5+", "ROLE": "ANTI-SHIP/LAND", "STATUS": "R&D" } },
-                    { id: "jinnah", name: "JINNAH CLASS", type: "FRIGATE", specs: { "DESIGN": "INDIGENOUS", "DISPLACEMENT": "3500+ TONS", "STATUS": "DESIGN" } },
-                    { id: "warrior", name: "WARRIOR SYSTEM", type: "INFANTRY", specs: { "TECH": "C4I INTEGRATED", "NVG": "ADVANCED", "STATUS": "TRIALS" } }
-                ]
-            }
-        };
+        // DATA STRUCTURE
+        let db = { stock: [], customers: [], sales: [], expenses: [], dues: [], transactions: [] };
+        let cart = [];
+        let selectedCust = null;
+        let currentStockFilter = 'all';
+        let privacyMode = true; // Default Hidden
 
-        // --- AUDIO SYSTEM (Browser Synth) ---
-        const audio = {
-            ctx: null,
-            init: function() {
-                window.AudioContext = window.AudioContext || window.webkitAudioContext;
-                this.ctx = new AudioContext();
-            },
-            play: function(freq, type, dur, vol=0.05) {
-                if (!this.ctx) return;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = type;
-                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + dur);
-            },
-            click: function() { this.play(1200, 'square', 0.05); },
-            hover: function() { this.play(300, 'sine', 0.1, 0.02); },
-            boot: function() { 
-                this.play(100, 'sawtooth', 0.5); 
-                setTimeout(()=>this.play(600, 'square', 0.2), 300);
-            }
-        };
+        function val(id) { const e = document.getElementById(id); return e ? (parseFloat(e.value) || 0) : 0; }
+        function txt(id) { const e = document.getElementById(id); return e ? e.value : ""; }
 
-        // --- SYSTEM CONTROLLER ---
-        const sys = {
-            init: function() {
-                audio.init();
-                audio.boot();
-                document.getElementById('bios-screen').style.display = 'none';
-                document.getElementById('main-grid').style.opacity = '1';
-                
-                ui.buildNav();
-                map.init();
-                ui.log("KERNEL LOADED. MODULES ACTIVE.", "SYS");
-                
-                setInterval(() => {
-                    document.getElementById('sys-clock').innerText = new Date().toLocaleTimeString('en-GB');
-                }, 1000);
-            },
-            bootSequence: async function() {
-                const term = document.getElementById('bios-text');
-                const lines = [
-                    "SENTINEL OS v99.0 booting...",
-                    "Verifying Database Integrity... OK",
-                    "Loading Strategic Assets [NUCLEAR]... OK",
-                    "Loading Conventional Assets [LAND/AIR/SEA]... OK",
-                    "Connecting to SAT-LINK... SECURE",
-                    "Decrypting Clearance Level 5..."
-                ];
-                for(let line of lines) {
-                    term.innerHTML += `<div>> ${line}</div>`;
-                    await new Promise(r => setTimeout(r, 200));
+        function init() {
+            // Try to load previous data if exists
+            const s = localStorage.getItem('nasir_erp_v33') || localStorage.getItem('nasir_erp_v32');
+            if(s) {
+                try {
+                    db = JSON.parse(s);
+                } catch(e) {
+                    console.error("Data Corrupt", e);
                 }
-                document.getElementById('init-btn').classList.remove('hidden');
+            } else {
+                db.customers = [{id:1, name:"Cash Sale", phone:"", city:"", prod_due:0, cash_due:0}];
+                saveDB();
             }
-        };
+            if(!db.transactions) db.transactions = [];
+            
+            document.getElementById('date-display').innerText = new Date().toDateString();
+            refreshAll();
+        }
 
-        // --- UI MANAGER ---
-        const ui = {
-            log: function(msg, type="INFO") {
-                const con = document.getElementById('console');
-                const time = new Date().toLocaleTimeString('en-GB');
-                con.innerHTML += `<div class="mb-1"><span class="text-gray-500">[${time}]</span> <span class="${type === 'SYS' ? 'text-cyan-400' : 'text-green-400'}">${type}:</span> ${msg}</div>`;
-                con.scrollTop = con.scrollHeight;
-            },
+        function saveDB() { localStorage.setItem('nasir_erp_v33', JSON.stringify(db)); }
 
-            buildNav: function() {
-                const container = document.getElementById('nav-container');
-                for (const key in DB) {
-                    const btn = document.createElement('button');
-                    btn.className = `w-full text-left p-3 mb-1 tech-btn text-[10px] ${DB[key].color}`;
-                    btn.innerHTML = `> ${DB[key].label}`;
-                    btn.onmouseenter = () => audio.hover();
-                    btn.onclick = (e) => { 
-                        audio.click(); 
-                        document.querySelectorAll('.tech-btn').forEach(b => b.classList.remove('active'));
-                        e.target.classList.add('active');
-                        this.openModule(key); 
-                    };
-                    container.appendChild(btn);
-                }
-            },
+        function refreshAll() {
+            renderDash();
+            renderUdhar();
+            renderCust();
+            renderStock(); 
+            renderExp();
+            renderDues();
+            renderTrans();
+            popDrop();
+        }
 
-            openModule: function(key) {
-                const mod = DB[key];
-                const view = document.getElementById('data-view');
-                const content = document.getElementById('view-content');
+        function nav(id) {
+            document.querySelectorAll('.tab-section').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('.menu-item').forEach(e => e.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            if(id.startsWith('stock-')) {
+                currentStockFilter = id.replace('stock-', ''); 
+                document.getElementById('stock-section').classList.add('active');
                 
-                document.getElementById('view-title').innerText = mod.label;
-                document.getElementById('view-title').className = `text-3xl font-['Orbitron'] font-bold ${mod.color}`;
-                document.getElementById('view-subtitle').innerText = `ACCESSING ${mod.items.length} RECORDS // ENCRYPTED`;
+                const logo = document.getElementById('stock-brand-logo');
+                const title = document.getElementById('stock-title');
+                
+                title.style.display = 'block';
+                logo.style.display = 'none';
+                title.style.color = "var(--primary)";
 
-                content.innerHTML = '';
-                mod.items.forEach(item => {
-                    const el = document.createElement('div');
-                    el.className = "data-card p-3 cursor-pointer relative overflow-hidden group";
-                    el.innerHTML = `
-                        <div class="text-[9px] text-gray-500 mb-1 font-mono">${item.type}</div>
-                        <div class="text-lg font-bold text-white group-hover:text-cyan-400 font-['Rajdhani'] leading-none">${item.name}</div>
-                        <div class="absolute right-2 top-2 opacity-0 group-hover:opacity-100 text-[8px] text-cyan-500 border border-cyan-500 px-1">SELECT</div>
-                    `;
-                    el.onmouseenter = () => audio.hover();
-                    el.onclick = () => { audio.click(); this.selectTarget(item, mod.hex); };
-                    content.appendChild(el);
+                if (currentStockFilter === 'fmc') {
+                    logo.src = 'app/2.jpeg'; logo.style.display = 'block'; title.style.display = 'none'; 
+                } else if (currentStockFilter === 'sungro') {
+                    logo.src = 'app/3.jpeg'; logo.style.display = 'block'; title.style.display = 'none';
+                } else if (currentStockFilter === 'expired') {
+                    title.innerText = "EXPIRED STOCK ALERT";
+                    title.style.color = "red";
+                } else {
+                    title.innerText = (currentStockFilter === 'misc') ? "Misc Stock" : "Inventory";
+                }
+                renderStock();
+            } else {
+                document.getElementById(id).classList.add('active');
+            }
+        }
+
+        // --- DASHBOARD & PRIVACY ---
+        function togglePrivacy() {
+            privacyMode = !privacyMode;
+            renderDash();
+            const btn = document.getElementById('privacy-btn');
+            if(privacyMode) {
+                btn.innerHTML = '<i class="fas fa-eye"></i> Show Amounts';
+                btn.className = 'btn btn-blue';
+            } else {
+                btn.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Amounts';
+                btn.className = 'btn btn-orange';
+            }
+        }
+
+        function renderDash() {
+            let v_fmc=0, v_sungro=0, v_misc=0, sales=0, exp=0, comp_due=0, other_due=0, market_due=0, cost_sold=0;
+            db.stock.forEach(s => { const val = s.price * s.qty; if(s.cat === 'Sungro') v_sungro += val; else if(s.cat === 'FMC') v_fmc += val; else v_misc += val; });
+            db.sales.forEach(s => { sales += s.total; s.items.forEach(i => { const stockItem = db.stock.find(x => x.id == i.id); if(stockItem) cost_sold += (stockItem.cost * i.qty); }); });
+            db.expenses.forEach(e => exp += e.amt);
+            db.dues.forEach(d => { if(d.type === 'Company') comp_due += d.amt; else other_due += d.amt; });
+            db.customers.forEach(c => { market_due += (c.prod_due || 0) + (c.cash_due || 0); });
+            let profit = sales - cost_sold - exp;
+            
+            setVal('d-fmc', v_fmc);
+            setVal('d-sungro', v_sungro);
+            setVal('d-misc', v_misc);
+            setVal('d-total-stock', v_fmc+v_sungro+v_misc);
+            setVal('d-sale', sales);
+            setVal('d-exp', exp);
+            setVal('d-market-due', market_due);
+            setVal('d-prof', profit);
+            setVal('d-comp-due', comp_due);
+            setVal('d-other-due', other_due);
+        }
+
+        function setVal(id, val) {
+            const el = document.getElementById(id);
+            el.innerText = val.toLocaleString();
+            if(privacyMode) el.classList.add('blurred');
+            else el.classList.remove('blurred');
+        }
+
+        // --- POS ---
+        function searchCust() {
+            const q = txt('pos-search').toLowerCase();
+            const r = document.getElementById('search-res');
+            r.innerHTML = '';
+            if(q.length < 1) { r.style.display = 'none'; selectedCust = null; document.getElementById('cust-bal-display').innerText = ""; return; }
+            const hits = db.customers.filter(c => c.name.toLowerCase().includes(q) || c.phone.includes(q));
+            if(hits.length > 0) {
+                hits.forEach(c => {
+                    const d = document.createElement('div');
+                    d.className = 'search-item';
+                    d.innerHTML = `<strong>${c.name}</strong> (${c.phone})`;
+                    d.onclick = () => selectCust(c);
+                    r.appendChild(d);
                 });
-
-                document.getElementById('idle-reticle').classList.add('hidden');
-                view.classList.remove('hidden');
-                setTimeout(() => view.style.opacity = '1', 10);
-                this.log(`MODULE ACCESSED: ${mod.label}`, "SYS");
-            },
-
-            closeView: function() {
-                const view = document.getElementById('data-view');
-                view.style.opacity = '0';
-                setTimeout(() => { 
-                    view.classList.add('hidden'); 
-                    document.getElementById('idle-reticle').classList.remove('hidden');
-                }, 300);
-            },
-
-            selectTarget: function(item, color) {
-                const panel = document.getElementById('target-data');
-                document.getElementById('empty-state').classList.add('hidden');
-                panel.classList.remove('hidden');
-                
-                document.getElementById('t-name').innerText = item.name;
-                document.getElementById('t-type').innerText = `${item.type} // ID: ${item.id.toUpperCase()}`;
-                
-                const specs = document.getElementById('t-specs');
-                specs.innerHTML = '';
-                
-                // Specs & heuristic for chart
-                let scores = [20, 20, 20, 20, 20]; // [Range, Speed, Power, Tech, Stealth]
-                
-                for(let [k,v] of Object.entries(item.specs)) {
-                    specs.innerHTML += `<div class="flex justify-between border-b border-white/5 py-1"><span class="text-gray-500">${k}</span><span class="text-gray-300">${v}</span></div>`;
-                    
-                    // Simple parser for chart visuals
-                    const val = v.toString().toUpperCase();
-                    if(k === "RANGE") scores[0] = val.includes("KM") ? Math.min(parseInt(val.replace(/,/g,''))/30, 100) : 50;
-                    if(k === "SPEED" && val.includes("MACH")) scores[1] = Math.min(parseFloat(val.split(' ')[1])*10, 100);
-                    if(k === "WARHEAD" || k === "ARMAMENT" || k === "MISSILES") scores[2] = 80;
-                    if(k === "RADAR" || k === "GUIDANCE") scores[3] = 85;
-                    if(k === "STEALTH" || val.includes("STEALTH")) scores[4] = 90;
-                }
-
-                // Update Chart
-                this.renderChart(scores, color);
-                this.log(`DATA LINK ESTABLISHED: ${item.name}`, "NET");
-            },
-
-            renderChart: function(data, color) {
-                const ctx = document.getElementById('radar-chart');
-                if(window.currChart) window.currChart.destroy();
-                
-                window.currChart = new Chart(ctx, {
-                    type: 'radar',
-                    data: {
-                        labels: ['RNG', 'SPD', 'PWR', 'TEC', 'STL'],
-                        datasets: [{
-                            data: data,
-                            backgroundColor: color + '20',
-                            borderColor: color,
-                            borderWidth: 1,
-                            pointRadius: 1,
-                            pointBackgroundColor: '#fff'
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            r: {
-                                angleLines: { color: 'rgba(255,255,255,0.05)' },
-                                grid: { color: 'rgba(255,255,255,0.05)' },
-                                pointLabels: { color: 'rgba(255,255,255,0.5)', font: { size: 8, family: 'Share Tech Mono' } },
-                                ticks: { display: false, max: 100 }
-                            }
-                        },
-                        plugins: { legend: { display: false } },
-                        maintainAspectRatio: false
-                    }
-                });
+                r.style.display = 'block';
+                document.getElementById('btn-add-new').style.display = 'none';
+            } else {
+                r.style.display = 'none';
+                document.getElementById('btn-add-new').style.display = 'block';
             }
-        };
+        }
+        function selectCust(c) {
+            selectedCust = c;
+            document.getElementById('pos-search').value = c.name;
+            document.getElementById('search-res').style.display = 'none';
+            const bal = (c.prod_due || 0) + (c.cash_due || 0);
+            document.getElementById('cust-bal-display').innerText = `(Bal: ${bal})`;
+            calcLogic();
+        }
+        function fillPrice() {
+            const id = txt('p-item');
+            const i = db.stock.find(x => x.id == id);
+            if(i) { document.getElementById('p-price').value = i.price; document.getElementById('p-disc').value = i.price; }
+        }
+        function addToCart() {
+            const id = txt('p-item'); const qty = val('p-qty'); const price = val('p-price'); const finalRate = val('p-disc'); 
+            if(!id || qty <= 0) return;
+            const item = db.stock.find(x => x.id == id);
+            const total = finalRate * qty;
+            cart.push({ id, name:item.name, qty, price:price, disc:finalRate, total });
+            document.getElementById('p-qty').value = ""; document.getElementById('p-price').value = ""; document.getElementById('p-disc').value = "0"; document.getElementById('p-item').value = ""; document.getElementById('p-item').focus();
+            renderCart();
+        }
+        function renderCart() {
+            const b = document.getElementById('cart-body'); b.innerHTML = ''; let t = 0;
+            cart.forEach((c, i) => { t += c.total; b.innerHTML += `<tr><td>${c.name}</td><td>${c.qty}</td><td>${c.price}</td><td>${c.disc}</td><td>${c.total}</td><td><button class="btn btn-red" onclick="cart.splice(${i},1);renderCart()">X</button></td></tr>`; });
+            document.getElementById('lbl-total').innerText = t; calcLogic();
+        }
+        function calcLogic() {
+            const total = parseFloat(document.getElementById('lbl-total').innerText); const paid = val('pay-input'); const msg = document.getElementById('logic-msg'); const bal = total - paid;
+            if(bal > 0) { msg.innerText = `Pending: ${bal} to Udhar`; msg.style.color = "red"; } 
+            else if(bal < 0) { msg.innerText = `Return: ${Math.abs(bal)}`; msg.style.color = "green"; } 
+            else { msg.innerText = "Full Payment"; msg.style.color = "blue"; }
+        }
+        function saveBill() {
+            if(cart.length === 0) return alert("Cart empty");
+            const total = parseFloat(document.getElementById('lbl-total').innerText); const paid = val('pay-input');
+            let actualPaid = paid; if(paid > total) actualPaid = total; 
+            const pending = total - actualPaid;
+            if(!selectedCust && pending > 0) { if(!confirm("Warning: Walk-in customer. Udhar not tracked. Continue?")) return; }
+            let finalCust = selectedCust; if(!finalCust) finalCust = {name: "Walk-in Customer", phone: "-", prod_due: 0, cash_due: 0};
+            const oldProd = finalCust.prod_due || 0; const oldCash = finalCust.cash_due || 0; const oldBal = oldProd + oldCash;
+            cart.forEach(c => { const s = db.stock.find(x => x.id == c.id); if(s) s.qty -= c.qty; });
+            if(selectedCust) { if(!selectedCust.prod_due) selectedCust.prod_due = 0; selectedCust.prod_due += pending; }
+            const sale = {id:Date.now(), date: new Date().toLocaleDateString(), cust: finalCust.name, total: total, paid: actualPaid, items:[...cart]};
+            db.sales.push(sale);
+            db.transactions.push({ id: sale.id, date: sale.date, type: 'Sale', cust: finalCust.name, desc: `Invoice #${sale.id}`, amt: total });
+            saveDB(); printInv(sale, finalCust, total, actualPaid, oldBal);
+            cart=[]; renderCart(); document.getElementById('pay-input').value = ""; document.getElementById('pos-search').value = ""; selectedCust=null; document.getElementById('cust-bal-display').innerText=""; refreshAll();
+        }
+        function printInv(sale, cust, total, paid, oldBal) {
+            document.getElementById('pr-cust').innerText = cust.name; document.getElementById('pr-phone').innerText = cust.phone; document.getElementById('pr-inv').innerText = sale.id; document.getElementById('pr-date').innerText = sale.date;
+            const b = document.getElementById('pr-body'); b.innerHTML = '';
+            sale.items.forEach(c => { b.innerHTML += `<tr><td>${c.name}</td><td>${c.qty}</td><td>${c.disc}</td><td>${c.total}</td></tr>`; });
+            document.getElementById('pr-total').innerText = total.toLocaleString(); document.getElementById('pr-prev').innerText = oldBal.toLocaleString(); document.getElementById('pr-paid').innerText = paid.toLocaleString();
+            let finalBal = 0; if(selectedCust) finalBal = (cust.prod_due || 0) + (cust.cash_due || 0); document.getElementById('pr-rem').innerText = finalBal.toLocaleString();
+            const pa = document.getElementById('print-area'); pa.style.display = 'block'; setTimeout(() => { window.print(); pa.style.display = 'none'; }, 300);
+        }
 
-        // --- TACTICAL MAP ---
-        const map = {
-            init: function() {
-                const cvs = document.getElementById('tactical-map');
-                const ctx = cvs.getContext('2d');
-                let w, h;
-                let angle = 0;
-                
-                const resize = () => { w = cvs.width = cvs.offsetWidth; h = cvs.height = cvs.offsetHeight; };
-                window.onresize = resize;
-                resize();
+        // --- UDHAR & PAYMENT ---
+        function renderUdhar() {
+            const b = document.getElementById('udhar-body'); b.innerHTML = '';
+            db.customers.forEach(c => { const totalDue = (c.prod_due || 0) + (c.cash_due || 0); if(totalDue > 0) { b.innerHTML += `<tr><td>${c.name}</td><td>${c.phone}</td><td>${c.city}</td><td style="color:red;font-weight:bold">${totalDue}</td><td><button class="btn btn-green" onclick="openReceiveModal(${c.id})">Receive Payment</button></td></tr>`; } });
+        }
+        function openReceiveModal(id) {
+            const c = db.customers.find(x => x.id == id); if(!c) return;
+            const due = (c.prod_due || 0) + (c.cash_due || 0);
+            document.getElementById('rec-cust-id').value = c.id; document.getElementById('rec-name').innerText = c.name; document.getElementById('rec-due').innerText = due; document.getElementById('rec-amt').value = ""; document.getElementById('rec-desc').value = ""; openModal('modal-receive');
+        }
+        function fillFullPayment() { document.getElementById('rec-amt').value = document.getElementById('rec-due').innerText; }
+        function processPayment() {
+            const id = document.getElementById('rec-cust-id').value; const amt = val('rec-amt'); const desc = txt('rec-desc') || "Payment Received";
+            if(!id || amt <= 0) return alert("Please enter valid amount");
+            const c = db.customers.find(x => x.id == id); let remainingAmt = amt;
+            if(c.prod_due > 0) { if(remainingAmt >= c.prod_due) { remainingAmt -= c.prod_due; c.prod_due = 0; } else { c.prod_due -= remainingAmt; remainingAmt = 0; } }
+            if(remainingAmt > 0 && c.cash_due > 0) { if(remainingAmt >= c.cash_due) { remainingAmt -= c.cash_due; c.cash_due = 0; } else { c.cash_due -= remainingAmt; remainingAmt = 0; } }
+            db.transactions.push({ id: Date.now(), date: new Date().toLocaleDateString(), type: 'Payment', cust: c.name, desc: desc, amt: amt });
+            saveDB(); closeModal(); refreshAll(); alert("Payment Received Successfully!");
+        }
 
-                const loop = () => {
-                    ctx.clearRect(0,0,w,h);
-                    
-                    // Grid
-                    ctx.strokeStyle = 'rgba(0, 240, 255, 0.05)';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    for(let i=0; i<w; i+=80) { ctx.moveTo(i,0); ctx.lineTo(i,h); }
-                    for(let i=0; i<h; i+=80) { ctx.moveTo(0,i); ctx.lineTo(w,i); }
-                    ctx.stroke();
+        // --- TRANSACTION HISTORY ---
+        function renderTrans() {
+            const b = document.getElementById('trans-body'); b.innerHTML = ''; const q = txt('tr-search').toLowerCase(); const sorted = [...db.transactions].reverse();
+            sorted.forEach(t => { if(t.cust.toLowerCase().includes(q) || t.type.toLowerCase().includes(q)) { let badgeClass = t.type === 'Sale' ? 'badge-sale' : 'badge-pay'; b.innerHTML += `<tr><td>${t.id}</td><td>${t.date}</td><td><span class="badge ${badgeClass}">${t.type}</span></td><td>${t.cust}</td><td>${t.desc}</td><td style="font-weight:bold;">${t.amt}</td></tr>`; } });
+        }
 
-                    // Radar Sweep
-                    angle += 0.01;
-                    ctx.save();
-                    ctx.translate(w/2, h/2);
-                    ctx.rotate(angle);
-                    const grad = ctx.createLinearGradient(0,0,w,0);
-                    grad.addColorStop(0, 'rgba(0, 240, 255, 0)');
-                    grad.addColorStop(0.5, 'rgba(0, 240, 255, 0.1)');
-                    ctx.fillStyle = grad;
-                    ctx.beginPath();
-                    ctx.moveTo(0,0);
-                    ctx.arc(0,0,Math.max(w,h), -0.1, 0.1);
-                    ctx.fill();
-                    ctx.restore();
+        // --- CUSTOMERS ---
+        function renderCust() {
+            const b = document.getElementById('cust-body'); b.innerHTML = ''; const q = txt('c-search').toLowerCase();
+            db.customers.forEach(c => { if(c.name.toLowerCase().includes(q)) { b.innerHTML += `<tr><td>${c.name}</td><td>${c.phone}</td><td>${c.city || '-'}</td><td><button class="btn btn-blue" onclick="editCust(${c.id})">Edit</button></td></tr>`; } });
+        }
+        function editCust(id) { const c = db.customers.find(x => x.id == id); if(!c) return; document.getElementById('nc-id').value = c.id; document.getElementById('nc-name').value = c.name; document.getElementById('nc-phone').value = c.phone; document.getElementById('nc-city').value = c.city; openModal('modal-cust'); }
+        function quickAddCust() { document.getElementById('nc-id').value = ""; document.getElementById('nc-name').value = txt('pos-search'); document.getElementById('nc-phone').value = ""; document.getElementById('nc-city').value = ""; openModal('modal-cust'); }
+        function openNewCustModal() { document.getElementById('nc-id').value = ""; document.getElementById('nc-name').value = ""; document.getElementById('nc-phone').value = ""; document.getElementById('nc-city').value = ""; openModal('modal-cust'); }
+        function saveCust() {
+            const id = document.getElementById('nc-id').value; const name = txt('nc-name'); if(!name) return;
+            if(id) { const c = db.customers.find(x => x.id == id); c.name = name; c.phone = txt('nc-phone'); c.city = txt('nc-city'); } 
+            else { const c = {id:Date.now(), name, phone:txt('nc-phone'), city:txt('nc-city'), prod_due:0, cash_due:0}; db.customers.push(c); if(document.getElementById('pos').classList.contains('active')) selectCust(c); }
+            saveDB(); closeModal(); refreshAll();
+        }
 
-                    // Random blips
-                    if(Math.random()>0.95) {
-                        const x = Math.random()*w;
-                        const y = Math.random()*h;
-                        ctx.fillStyle = '#ff003c';
-                        ctx.fillRect(x,y,2,2);
-                        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-                        ctx.font = '8px monospace';
-                        ctx.fillText('TRK-' + Math.floor(Math.random()*999), x+4, y);
-                    }
-                    
-                    requestAnimationFrame(loop);
-                };
-                loop();
+        // --- STOCK & EXPIRED LOGIC ---
+        function isExpired(dateStr) {
+            if(!dateStr) return false;
+            const today = new Date();
+            today.setHours(0,0,0,0); // Clear time part for accurate comparison
+            const exp = new Date(dateStr);
+            return exp < today;
+        }
+
+        function renderStock() { 
+            const b = document.getElementById('st-body'); b.innerHTML = ''; 
+            const q = document.getElementById('st-search').value.toLowerCase(); 
+            
+            let data = db.stock; 
+
+            // FILTER LOGIC
+            if(currentStockFilter === 'expired') {
+                data = db.stock.filter(s => isExpired(s.exp));
+            } else if(currentStockFilter !== 'all') {
+                data = db.stock.filter(s => (s.cat || 'Misc').toLowerCase() === currentStockFilter); 
             }
-        };
 
-        window.onload = sys.bootSequence;
+            data.forEach(s => { 
+                if(s.name.toLowerCase().includes(q)) { 
+                    const expired = isExpired(s.exp);
+                    let rowClass = '';
+                    let status = 'OK';
+
+                    if (expired) {
+                        rowClass = 'expired-stock';
+                        status = 'EXPIRED';
+                    } else if (s.qty < 10) {
+                        rowClass = 'low-stock';
+                        status = 'LOW';
+                    }
+
+                    b.innerHTML += `<tr class="${rowClass}">
+                        <td>${s.batch || '-'}</td>
+                        <td>${s.name} ${expired ? '(EXP)' : ''}</td>
+                        <td>${s.cat || 'Misc'}</td>
+                        <td>${s.cost}</td>
+                        <td>${s.price}</td>
+                        <td>${s.exp || '-'}</td>
+                        <td>${s.qty}</td>
+                        <td>${(s.qty*s.price).toLocaleString()}</td>
+                        <td><button class="btn btn-blue" onclick="editStock(${s.id})">Edit</button></td>
+                    </tr>`; 
+                } 
+            }); 
+        }
+        
+        function openNewStockModal() {
+            document.getElementById('ns-id').value = ""; 
+            document.getElementById('ns-name').value = "";
+            document.getElementById('ns-cost').value = "";
+            document.getElementById('ns-price').value = "";
+            document.getElementById('ns-qty').value = "";
+            document.getElementById('ns-batch').value = "";
+            document.getElementById('ns-exp').value = "";
+            openModal('modal-stock');
+        }
+
+        function editStock(id) {
+            const s = db.stock.find(x => x.id == id);
+            if(!s) return;
+            document.getElementById('ns-id').value = s.id; 
+            document.getElementById('ns-cat').value = s.cat || 'Misc';
+            document.getElementById('ns-name').value = s.name;
+            document.getElementById('ns-cost').value = s.cost;
+            document.getElementById('ns-price').value = s.price;
+            document.getElementById('ns-qty').value = s.qty;
+            document.getElementById('ns-batch').value = s.batch || '';
+            document.getElementById('ns-exp').value = s.exp || '';
+            openModal('modal-stock');
+        }
+
+        function saveStock() { 
+            const id = document.getElementById('ns-id').value;
+            const name = txt('ns-name'); if(!name) return alert("Name required"); 
+            const cat = txt('ns-cat'); const cost = val('ns-cost'); const qty = val('ns-qty'); const price = val('ns-price'); const batch = txt('ns-batch'); const exp = txt('ns-exp');
+            const payType = txt('ns-pay-type'); 
+            
+            if(id) {
+                // UPDATE EXISTING
+                const s = db.stock.find(x => x.id == id);
+                s.name = name; s.cat = cat; s.cost = cost; s.price = price; s.qty = qty; s.batch = batch; s.exp = exp;
+            } else {
+                // CREATE NEW
+                db.stock.push({ id: Date.now(), cat: cat, name: name, cost: cost, price: price, qty: qty, batch: batch, exp: exp }); 
+                if(payType === 'Credit') { const totalCost = cost * qty; db.dues.push({id:Date.now()+1, type:'Company', name: `Stock: ${name}`, amt: totalCost}); } 
+            }
+            saveDB(); closeModal(); refreshAll(); 
+        }
+        
+        // --- EXPENSES & DUES ---
+        function renderExp() { const b = document.getElementById('exp-body'); b.innerHTML = ''; db.expenses.forEach((e, i) => { b.innerHTML += `<tr><td>${e.date}</td><td>${e.desc}</td><td>${e.amt}</td><td><button class="btn btn-red" onclick="delExp(${i})">X</button></td></tr>`; }); }
+        function addExpense() { const d = txt('ex-desc'); const a = val('ex-amt'); if(!d || a<=0) return; db.expenses.push({date: new Date().toLocaleDateString(), desc:d, amt:a}); document.getElementById('ex-desc').value = ""; document.getElementById('ex-amt').value = ""; saveDB(); refreshAll(); }
+        function delExp(i) { db.expenses.splice(i,1); saveDB(); refreshAll(); }
+        function renderDues() { const b = document.getElementById('dues-body'); b.innerHTML = ''; db.dues.forEach((d, i) => { b.innerHTML += `<tr><td>${d.type}</td><td>${d.name}</td><td>${d.amt}</td><td><button class="btn btn-red" onclick="delDue(${i})">Paid/Clear</button></td></tr>`; }); }
+        function addDue() { const type = txt('due-type'); const n = txt('due-name'); const a = val('due-amt'); if(!n || a<=0) return; db.dues.push({id:Date.now(), type, name:n, amt:a}); document.getElementById('due-name').value = ""; document.getElementById('due-amt').value = ""; saveDB(); refreshAll(); }
+        function delDue(i) { if(confirm("Mark this due as Paid/Cleared?")) { db.dues.splice(i,1); saveDB(); refreshAll(); } }
+        
+        // --- UTILS ---
+        function popDrop() { const s = document.getElementById('p-item'); s.innerHTML = '<option value="">Select Product</option>'; db.stock.forEach(i => s.innerHTML += `<option value="${i.id}">${i.name} (Stock: ${i.qty})</option>`); }
+        function openModal(id) { document.querySelector(`#${id}`).style.display = 'flex'; }
+        function closeModal() { document.querySelectorAll('.modal-overlay').forEach(e => e.style.display = 'none'); }
+        function resetSys() { if(confirm("DELETE ALL DATA?")) { localStorage.clear(); location.reload(); } }
+        function backup() { const a = document.createElement("a"); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db)); a.download = "NasirERP_Backup.json"; a.click(); }
+        
+        init();
     </script>
 </body>
 </html>
